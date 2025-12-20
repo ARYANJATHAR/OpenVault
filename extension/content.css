@@ -1,0 +1,49 @@
+/* Vault Extension Content Styles */
+
+.vault-autofill-popup {
+  animation: vault-popup-enter 0.15s ease-out;
+}
+
+@keyframes vault-popup-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.vault-credential-item:last-child {
+  border-bottom: none !important;
+}
+
+.vault-icon-container:hover svg {
+  stroke: #2ecc71;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: light) {
+  .vault-autofill-popup {
+    background: #ffffff !important;
+    border-color: #e0e0e0 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .vault-credential-item {
+    border-bottom-color: #f0f0f0 !important;
+  }
+  
+  .vault-credential-item:hover {
+    background: #f5f5f5 !important;
+  }
+  
+  .vault-credential-item > div:first-child {
+    color: #1a1a2e !important;
+  }
+  
+  .vault-credential-item > div:last-child {
+    color: #666 !important;
+  }
+}
