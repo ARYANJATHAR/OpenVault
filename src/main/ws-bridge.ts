@@ -1,7 +1,8 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { handleMessage } from './native-messaging';
 
 let wss: WebSocketServer | null = null;
+const clients: Set<WebSocket> = new Set();
 
 export function startWebSocketBridge(port = 9876, host = '127.0.0.1'): void {
     if (wss) return;
@@ -15,6 +16,8 @@ export function startWebSocketBridge(port = 9876, host = '127.0.0.1'): void {
     }
 
     wss.on('connection', (ws) => {
+        clients.add(ws);
+        
         ws.on('message', async (data) => {
             try {
                 const text = typeof data === 'string' ? data : data.toString('utf8');
@@ -26,6 +29,10 @@ export function startWebSocketBridge(port = 9876, host = '127.0.0.1'): void {
                 const errMsg = error instanceof Error ? error.message : String(error);
                 ws.send(JSON.stringify({ type: 'error', error: errMsg }));
             }
+        });
+
+        ws.on('close', () => {
+            clients.delete(ws);
         });
     });
 
@@ -44,5 +51,23 @@ export function stopWebSocketBridge(): void {
         wss.close();
     } finally {
         wss = null;
+        clients.clear();
     }
+}
+
+export function getWebSocketClients(): Set<WebSocket> {
+    return clients;
+}
+
+export function broadcastToClients(message: any): void {
+    const messageStr = JSON.stringify(message);
+    clients.forEach((ws) => {
+        try {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(messageStr);
+            }
+        } catch (error) {
+            // Ignore errors
+        }
+    });
 }

@@ -1,6 +1,7 @@
 /* Vault Extension Popup Styles */
 
 :root {
+    /* Dark Mode (Default) */
     --bg-primary: #0a0a0a;
     --bg-secondary: #141414;
     --bg-elevated: #1e1e1e;
@@ -11,6 +12,22 @@
     --accent-hover: #27ae60;
     --border: #262626;
     --border-bright: #404040;
+    --success: #2ecc71;
+    --error: #e74c3c;
+}
+
+/* Light Mode */
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-elevated: #f0f0f0;
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a6a;
+    --text-muted: #8a8a9a;
+    --accent: #2ecc71;
+    --accent-hover: #27ae60;
+    --border: #e0e0e0;
+    --border-bright: #d0d0d0;
     --success: #2ecc71;
     --error: #e74c3c;
 }

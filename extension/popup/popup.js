@@ -32,6 +32,8 @@ const lockBtn = mustGet('lockBtn');
 const openAppBtn = mustGet('openAppBtn');
 const addBtn = mustGet('addBtn');
 const generateBtn = mustGet('generateBtn');
+const themeToggleBtn = mustGet('themeToggleBtn');
+const themeIcon = mustGet('themeIcon');
 
 // ============================================================================
 // UI Helpers
@@ -307,6 +309,76 @@ document.addEventListener('keydown', (e) => {
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && document.activeElement !== searchInput) {
         searchInput.focus();
     }
+});
+
+// Theme management
+let currentTheme = 'dark';
+
+function applyTheme(theme) {
+    currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeIcon(theme);
+}
+
+function updateThemeIcon(theme) {
+    if (theme === 'dark') {
+        // Sun icon for light mode
+        themeIcon.innerHTML = `
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        `;
+        themeToggleBtn.title = 'Switch to light mode';
+    } else {
+        // Moon icon for dark mode
+        themeIcon.innerHTML = `
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        `;
+        themeToggleBtn.title = 'Switch to dark mode';
+    }
+}
+
+async function toggleTheme() {
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    // Try to sync with desktop app first
+    try {
+        const response = await chrome.runtime.sendMessage({ 
+            type: 'setTheme', 
+            theme: newTheme 
+        });
+        if (response?.success) {
+            applyTheme(newTheme);
+            chrome.storage.local.set({ vaultTheme: newTheme });
+            return;
+        }
+    } catch (error) {
+        // Desktop app not connected, just update locally
+    }
+    
+    // Update locally if desktop app not available
+    applyTheme(newTheme);
+    chrome.storage.local.set({ vaultTheme: newTheme });
+}
+
+// Theme toggle button handler
+themeToggleBtn.addEventListener('click', toggleTheme);
+
+// Load theme on init
+chrome.storage.local.get(['vaultTheme'], (result) => {
+    const theme = result.vaultTheme || 'dark';
+    applyTheme(theme);
+});
+
+// Listen for theme changes
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'theme-changed') {
+        applyTheme(message.theme);
+    }
+});
+
+// Sync theme from desktop app on startup
+chrome.runtime.sendMessage({ type: 'syncTheme' }).catch(() => {
+    // Ignore if desktop app not connected
 });
 
 // Initialize

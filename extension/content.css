@@ -23,27 +23,31 @@
   stroke: #2ecc71;
 }
 
-/* Dark mode overrides */
-@media (prefers-color-scheme: light) {
-  .vault-autofill-popup {
-    background: #ffffff !important;
-    border-color: #e0e0e0 !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-  }
-  
-  .vault-credential-item {
-    border-bottom-color: #f0f0f0 !important;
-  }
-  
-  .vault-credential-item:hover {
-    background: #f5f5f5 !important;
-  }
-  
-  .vault-credential-item > div:first-child {
-    color: #1a1a2e !important;
-  }
-  
-  .vault-credential-item > div:last-child {
-    color: #666 !important;
-  }
+/* Theme-aware styles */
+.vault-autofill-popup[data-theme="light"] {
+  background: #ffffff !important;
+  border-color: #e0e0e0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.vault-autofill-popup[data-theme="light"] .vault-credential-item {
+  border-bottom-color: #f0f0f0 !important;
+}
+
+.vault-autofill-popup[data-theme="light"] .vault-credential-item:hover {
+  background: #f5f5f5 !important;
+}
+
+.vault-autofill-popup[data-theme="light"] .vault-credential-item > div:first-child {
+  color: #1a1a2e !important;
+}
+
+.vault-autofill-popup[data-theme="light"] .vault-credential-item > div:last-child {
+  color: #666 !important;
+}
+
+.vault-autofill-popup[data-theme="light"] .vault-autofill-header {
+  background: #f8f9fa !important;
+  border-bottom-color: #e0e0e0 !important;
+  color: #2ecc71 !important;
 }

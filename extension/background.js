@@ -24,6 +24,12 @@ async function connectToNativeApp() {
             socket.onmessage = (event) => {
                 try {
                     const response = JSON.parse(event.data);
+                    // Handle theme changes (broadcast messages)
+                    if (response.type === 'theme-changed') {
+                        chrome.storage.local.set({ vaultTheme: response.theme });
+                        chrome.runtime.sendMessage({ type: 'theme-changed', theme: response.theme });
+                        return;
+                    }
                     if (response.requestId && pendingRequests.has(response.requestId)) {
                         const { resolve, reject } = pendingRequests.get(response.requestId);
                         pendingRequests.delete(response.requestId);
@@ -125,6 +131,32 @@ async function isVaultUnlocked() {
     }
 }
 /**
+ * Get theme from desktop app
+ */
+async function getTheme() {
+    try {
+        const response = await sendToNativeApp({ type: 'getTheme' });
+        return response.payload?.theme || 'dark';
+    }
+    catch {
+        return 'dark';
+    }
+}
+/**
+ * Sync theme from desktop app
+ */
+async function syncTheme() {
+    try {
+        const theme = await getTheme();
+        await chrome.storage.local.set({ vaultTheme: theme });
+        // Notify all tabs and popup
+        chrome.runtime.sendMessage({ type: 'theme-changed', theme });
+    }
+    catch (error) {
+        console.error('Failed to sync theme:', error);
+    }
+}
+/**
  * Save new credentials
  */
 async function saveCredentials(title, username, password, url) {
@@ -163,6 +195,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 catch (error) {
                     console.error('Failed to open Vault app via local bridge:', error);
                     return { success: false, error: String(error) };
+                }
+            case 'getTheme':
+                return await getTheme();
+            case 'syncTheme':
+                await syncTheme();
+                return { success: true };
+            case 'setTheme':
+                // Try to set theme in desktop app
+                try {
+                    const theme = message.theme;
+                    await sendToNativeApp({ type: 'setTheme', payload: { theme } });
+                    await chrome.storage.local.set({ vaultTheme: theme });
+                    chrome.runtime.sendMessage({ type: 'theme-changed', theme });
+                    return { success: true };
+                }
+                catch (error) {
+                    // If desktop app not connected, just update locally
+                    await chrome.storage.local.set({ vaultTheme: message.theme });
+                    chrome.runtime.sendMessage({ type: 'theme-changed', theme: message.theme });
+                    return { success: true };
                 }
             default:
                 return { error: 'Unknown message type' };

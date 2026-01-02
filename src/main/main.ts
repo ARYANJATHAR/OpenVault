@@ -7,10 +7,18 @@
 
 import { app, BrowserWindow, ipcMain, nativeTheme, globalShortcut } from 'electron';
 import * as path from 'path';
+import Store from 'electron-store';
 import { createTray, destroyTray } from './tray';
 import { setupNativeMessaging } from './native-messaging';
 import { startWebSocketBridge, stopWebSocketBridge } from './ws-bridge';
 import { vaultDb } from '../db/database';
+
+// Theme store
+const store = new Store({
+    defaults: {
+        theme: 'dark'
+    }
+});
 
 // ============================================================================
 // Constants
@@ -79,6 +87,9 @@ async function createMainWindow(): Promise<BrowserWindow> {
     // Show when ready
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();
+        // Send initial theme
+        const theme = store.get('theme', 'dark') as string;
+        mainWindow?.webContents.send('theme-changed', theme);
     });
 
     // Handle close: minimize to tray instead of quitting
@@ -272,6 +283,15 @@ ipcMain.handle('entries:recordUsed', (_, id: string) => {
     return { success: true };
 });
 
+ipcMain.handle('entries:toggleFavorite', (_, id: string) => {
+    const isFavorite = vaultDb.toggleFavorite(id);
+    return { success: true, isFavorite };
+});
+
+ipcMain.handle('entries:getFavorites', () => {
+    return vaultDb.getFavoriteEntries();
+});
+
 // Folder operations
 ipcMain.handle('folders:getAll', () => {
     return vaultDb.getAllFolders();
@@ -323,6 +343,21 @@ ipcMain.handle('app:getVersion', () => {
 
 ipcMain.handle('app:getPlatform', () => {
     return process.platform;
+});
+
+// Theme operations
+ipcMain.handle('theme:get', () => {
+    return store.get('theme', 'dark');
+});
+
+ipcMain.handle('theme:set', (_, theme: 'light' | 'dark') => {
+    store.set('theme', theme);
+    // Notify renderer of theme change
+    mainWindow?.webContents.send('theme-changed', theme);
+    // Broadcast to WebSocket clients (extension)
+    const { broadcastToClients } = require('./ws-bridge');
+    broadcastToClients({ type: 'theme-changed', theme });
+    return { success: true };
 });
 
 export { mainWindow, showWindow };

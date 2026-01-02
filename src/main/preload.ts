@@ -56,6 +56,10 @@ const api = {
             ipcRenderer.invoke('entries:findByUrl', url),
         recordUsed: (id: string) =>
             ipcRenderer.invoke('entries:recordUsed', id),
+        toggleFavorite: (id: string) =>
+            ipcRenderer.invoke('entries:toggleFavorite', id),
+        getFavorites: () =>
+            ipcRenderer.invoke('entries:getFavorites'),
     },
 
     // Folder operations
@@ -86,16 +90,24 @@ const api = {
             ipcRenderer.invoke('app:getPlatform'),
     },
 
+    // Theme operations
+    theme: {
+        get: () =>
+            ipcRenderer.invoke('theme:get'),
+        set: (theme: 'light' | 'dark') =>
+            ipcRenderer.invoke('theme:set', theme),
+    },
+
     // Event listeners
     on: (channel: string, callback: (...args: any[]) => void) => {
-        const validChannels = ['quick-search', 'vault-locked', 'entry-updated'];
+        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed'];
         if (validChannels.includes(channel)) {
             ipcRenderer.on(channel, (_, ...args) => callback(...args));
         }
     },
 
     off: (channel: string, callback: (...args: any[]) => void) => {
-        const validChannels = ['quick-search', 'vault-locked', 'entry-updated'];
+        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed'];
         if (validChannels.includes(channel)) {
             ipcRenderer.removeListener(channel, callback);
         }

@@ -18,6 +18,8 @@ declare global {
                 delete: (id: string) => Promise<{ success: boolean }>;
                 findByUrl: (url: string) => Promise<Entry[]>;
                 recordUsed: (id: string) => Promise<{ success: boolean }>;
+                toggleFavorite: (id: string) => Promise<{ success: boolean; isFavorite: boolean }>;
+                getFavorites: () => Promise<Entry[]>;
             };
             password: {
                 generate: (options?: { length?: number; uppercase?: boolean; lowercase?: boolean; numbers?: boolean; symbols?: boolean }) => Promise<string>;
@@ -25,6 +27,10 @@ declare global {
             app: {
                 getVersion: () => Promise<string>;
                 getPlatform: () => Promise<string>;
+            };
+            theme: {
+                get: () => Promise<'light' | 'dark'>;
+                set: (theme: 'light' | 'dark') => Promise<{ success: boolean }>;
             };
             on: (channel: string, callback: (...args: any[]) => void) => void;
             off: (channel: string, callback: (...args: any[]) => void) => void;
@@ -45,6 +51,7 @@ interface Entry {
     modifiedAt: number;
     lastUsedAt: number | null;
     syncVersion: number;
+    isFavorite: boolean;
 }
 
 type View = 'unlock' | 'create' | 'vault' | 'settings';
@@ -59,6 +66,8 @@ const App: React.FC = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [showFavorites, setShowFavorites] = useState(false);
+    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
     const [isEditing, setIsEditing] = useState(false);
     const [editDraft, setEditDraft] = useState({
@@ -80,10 +89,28 @@ const App: React.FC = () => {
 
     useEffect(() => {
         checkVaultStatus();
+        
+        // Load theme
+        window.vaultAPI?.theme.get().then((savedTheme) => {
+            setTheme(savedTheme);
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+
+        // Listen for theme changes
+        const handleThemeChange = (newTheme: 'light' | 'dark') => {
+            setTheme(newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+        };
+        window.vaultAPI?.on('theme-changed', handleThemeChange);
+
         window.vaultAPI?.on('quick-search', () => {
             document.getElementById('search-input')?.focus();
         });
-        return () => window.vaultAPI?.off('quick-search', () => { });
+        
+        return () => {
+            window.vaultAPI?.off('quick-search', () => { });
+            window.vaultAPI?.off('theme-changed', handleThemeChange);
+        };
     }, []);
 
     const checkVaultStatus = async () => {
@@ -204,10 +231,32 @@ const App: React.FC = () => {
         await navigator.clipboard.writeText(text);
     };
 
-    const filteredEntries = entries.filter(e =>
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.username.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleToggleFavorite = async (id: string) => {
+        const result = await window.vaultAPI?.entries.toggleFavorite(id);
+        if (result?.success) {
+            await loadEntries();
+            if (selectedEntry?.id === id) {
+                const refreshed = await window.vaultAPI?.entries.get(id);
+                setSelectedEntry(refreshed || null);
+            }
+        }
+    };
+
+    const filteredEntries = entries.filter(e => {
+        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.username.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFavorite = !showFavorites || e.isFavorite;
+        return matchesSearch && matchesFavorite;
+    });
+
+    const favoriteCount = entries.filter(e => e.isFavorite).length;
+
+    const handleThemeToggle = async () => {
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        await window.vaultAPI?.theme.set(newTheme);
+        setTheme(newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+    };
 
     if (isLoading) return <div className="app loading-screen"><div className="spinner" /></div>;
 
@@ -280,31 +329,48 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 <nav className="sidebar-nav">
-                    <button className="nav-item active">
+                    <button 
+                        className={`nav-item ${!showFavorites ? 'active' : ''}`}
+                        onClick={() => setShowFavorites(false)}
+                    >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         </svg>
                         All Passwords
                         <span className="count">{entries.length}</span>
                     </button>
-                    <button className="nav-item">
+                    <button 
+                        className={`nav-item ${showFavorites ? 'active' : ''}`}
+                        onClick={() => setShowFavorites(true)}
+                    >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                         </svg>
                         Favorites
+                        {favoriteCount > 0 && <span className="count">{favoriteCount}</span>}
                     </button>
                 </nav>
                 <div className="sidebar-footer">
+                    <button 
+                        className="icon-button theme-toggle" 
+                        onClick={handleThemeToggle}
+                        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    >
+                        {theme === 'dark' ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <circle cx="12" cy="12" r="5" />
+                                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                            </svg>
+                        ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                        )}
+                    </button>
                     <button className="icon-button" onClick={() => (window as any).vaultAPI.vault.lock().then(() => setView('unlock'))}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                    </button>
-                    <button className="icon-button">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                     </button>
                 </div>
@@ -334,7 +400,22 @@ const App: React.FC = () => {
                             >
                                 <div className="entry-avatar">{entry.title.charAt(0).toUpperCase()}</div>
                                 <div className="entry-meta">
-                                    <div className="entry-name">{entry.title}</div>
+                                    <div className="entry-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {entry.title}
+                                        {entry.isFavorite && (
+                                            <svg 
+                                                width="14" 
+                                                height="14" 
+                                                viewBox="0 0 24 24" 
+                                                fill="#fbbf24" 
+                                                stroke="#fbbf24" 
+                                                strokeWidth="2"
+                                                style={{ flexShrink: 0 }}
+                                            >
+                                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                            </svg>
+                                        )}
+                                    </div>
                                     <div className="entry-subtext">{entry.username}</div>
                                 </div>
                             </div>
@@ -366,6 +447,29 @@ const App: React.FC = () => {
                         <div className="detail-actions">
                             {!isEditing ? (
                                 <>
+                                    <button 
+                                        className="detail-btn" 
+                                        onClick={() => handleToggleFavorite(selectedEntry.id)}
+                                        style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            color: selectedEntry.isFavorite ? '#fbbf24' : 'inherit'
+                                        }}
+                                        title={selectedEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                                    >
+                                        <svg 
+                                            width="16" 
+                                            height="16" 
+                                            viewBox="0 0 24 24" 
+                                            fill={selectedEntry.isFavorite ? 'currentColor' : 'none'} 
+                                            stroke="currentColor" 
+                                            strokeWidth="2"
+                                        >
+                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                        </svg>
+                                        {selectedEntry.isFavorite ? 'Favorited' : 'Favorite'}
+                                    </button>
                                     <button className="detail-btn" onClick={() => beginEdit(selectedEntry)}>Edit</button>
                                     <button className="detail-btn danger" onClick={deleteSelected}>Delete</button>
                                 </>

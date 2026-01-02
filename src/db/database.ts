@@ -40,6 +40,7 @@ export interface DbEntry {
     sync_version: number;
     is_deleted: number;
     deleted_at: number | null;
+    is_favorite: number;
 }
 
 export interface DbFolder {
@@ -156,6 +157,14 @@ export class VaultDatabase {
         this.dbPath = vaultPath;
         this.db = new Database(vaultPath);
 
+        // Migrate: Add is_favorite column if it doesn't exist
+        try {
+            this.db.exec('ALTER TABLE entries ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+            this.db.exec('CREATE INDEX IF NOT EXISTS idx_entries_favorite ON entries(is_favorite)');
+        } catch (error) {
+            // Column might already exist, ignore error
+        }
+
         // Read vault metadata
         const meta = this.db.prepare('SELECT * FROM vault_meta WHERE id = 1').get() as DbVaultMeta;
 
@@ -223,8 +232,8 @@ export class VaultDatabase {
       INSERT INTO entries (
         id, title_encrypted, username_encrypted, password_encrypted,
         url, notes_encrypted, totp_secret_encrypted, folder_id,
-        created_at, modified_at, sync_version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        created_at, modified_at, sync_version, is_favorite
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
     `);
 
         stmt.run(
@@ -261,6 +270,7 @@ export class VaultDatabase {
         modifiedAt: number;
         lastUsedAt: number | null;
         syncVersion: number;
+        isFavorite: boolean;
     } | null {
         this.ensureUnlocked();
 
@@ -388,6 +398,38 @@ export class VaultDatabase {
 
         this.db.prepare('UPDATE entries SET last_used_at = ? WHERE id = ?')
             .run(Date.now(), id);
+    }
+
+    /**
+     * Toggle favorite status of an entry
+     */
+    toggleFavorite(id: string): boolean {
+        this.ensureUnlocked();
+
+        const entry = this.db!.prepare('SELECT is_favorite FROM entries WHERE id = ?').get(id) as { is_favorite: number } | undefined;
+        if (!entry) {
+            throw new Error(`Entry not found: ${id}`);
+        }
+
+        const newFavoriteStatus = entry.is_favorite === 0 ? 1 : 0;
+        this.db!.prepare('UPDATE entries SET is_favorite = ?, modified_at = ? WHERE id = ?')
+            .run(newFavoriteStatus, Date.now(), id);
+
+        this.logSync(id, 'update');
+        return newFavoriteStatus === 1;
+    }
+
+    /**
+     * Get all favorite entries
+     */
+    getFavoriteEntries(): Array<ReturnType<VaultDatabase['getEntry']>> {
+        this.ensureUnlocked();
+
+        const rows = this.db!.prepare(
+            'SELECT * FROM entries WHERE is_deleted = 0 AND is_favorite = 1 ORDER BY modified_at DESC'
+        ).all() as DbEntry[];
+
+        return rows.map(row => this.decryptEntry(row)).filter(Boolean) as Array<ReturnType<VaultDatabase['getEntry']>>;
     }
 
     /**
@@ -523,6 +565,7 @@ export class VaultDatabase {
                 modifiedAt: row.modified_at,
                 lastUsedAt: row.last_used_at,
                 syncVersion: row.sync_version,
+                isFavorite: row.is_favorite === 1,
             };
         } catch (error) {
             console.error('Failed to decrypt entry:', row.id, error);
@@ -559,7 +602,8 @@ export class VaultDatabase {
         last_used_at INTEGER,
         sync_version INTEGER NOT NULL DEFAULT 0,
         is_deleted INTEGER NOT NULL DEFAULT 0,
-        deleted_at INTEGER
+        deleted_at INTEGER,
+        is_favorite INTEGER NOT NULL DEFAULT 0
       );
       
       CREATE TABLE IF NOT EXISTS folders (
@@ -592,6 +636,7 @@ export class VaultDatabase {
       
       CREATE INDEX IF NOT EXISTS idx_entries_url ON entries(url);
       CREATE INDEX IF NOT EXISTS idx_entries_modified ON entries(modified_at);
+      CREATE INDEX IF NOT EXISTS idx_entries_favorite ON entries(is_favorite);
       CREATE INDEX IF NOT EXISTS idx_sync_log_entry ON sync_log(entry_id);
     `);
     }

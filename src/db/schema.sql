@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS entries (
     last_used_at INTEGER,
     sync_version INTEGER NOT NULL DEFAULT 0,
     is_deleted INTEGER NOT NULL DEFAULT 0,
-    deleted_at INTEGER
+    deleted_at INTEGER,
+    is_favorite INTEGER NOT NULL DEFAULT 0
 );
 
 -- Folders for organization
@@ -70,6 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_url ON entries(url);
 CREATE INDEX IF NOT EXISTS idx_entries_folder ON entries(folder_id);
 CREATE INDEX IF NOT EXISTS idx_entries_modified ON entries(modified_at);
 CREATE INDEX IF NOT EXISTS idx_entries_deleted ON entries(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_entries_favorite ON entries(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_sync_log_entry ON sync_log(entry_id);
 CREATE INDEX IF NOT EXISTS idx_sync_log_timestamp ON sync_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);

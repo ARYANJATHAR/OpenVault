@@ -85,35 +85,49 @@ function createAutofillPopup(
 
     const rect = anchorElement.getBoundingClientRect();
 
+    // Get theme from storage (async, but we'll use default initially)
+    chrome.storage.local.get(['vaultTheme'], (result) => {
+        const theme = result.vaultTheme || 'dark';
+        createPopupWithTheme(theme, rect, credentials);
+    });
+}
+
+function createPopupWithTheme(
+    theme: string,
+    rect: DOMRect,
+    credentials: Array<{ id: string; title: string; username: string }>
+): void {
     autofillPopup = document.createElement('div');
     autofillPopup.className = 'vault-autofill-popup';
+    autofillPopup.setAttribute('data-theme', theme);
     autofillPopup.style.cssText = `
     position: fixed;
     top: ${rect.bottom + window.scrollY + 4}px;
     left: ${rect.left + window.scrollX}px;
     z-index: 2147483647;
-        background: #141414;
-        border: 1px solid #262626;
+    background: ${theme === 'light' ? '#ffffff' : '#141414'};
+    border: 1px solid ${theme === 'light' ? '#e0e0e0' : '#262626'};
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 20px ${theme === 'light' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.4)'};
     min-width: 280px;
     max-width: 400px;
     overflow: hidden;
-        font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   `;
 
     // Header
     const header = document.createElement('div');
+    header.className = 'vault-autofill-header';
     header.style.cssText = `
     padding: 12px 16px;
-        background: #141414;
-        color: #2ecc71;
+    background: ${theme === 'light' ? '#f8f9fa' : '#141414'};
+    color: #2ecc71;
     font-size: 13px;
-        font-weight: 300;
+    font-weight: 300;
     display: flex;
     align-items: center;
     gap: 8px;
-        border-bottom: 1px solid #262626;
+    border-bottom: 1px solid ${theme === 'light' ? '#e0e0e0' : '#262626'};
   `;
     header.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -134,20 +148,20 @@ function createAutofillPopup(
         item.style.cssText = `
       padding: 12px 16px;
       cursor: pointer;
-            border-bottom: 1px solid #262626;
+      border-bottom: 1px solid ${theme === 'light' ? '#f0f0f0' : '#262626'};
       transition: background 0.15s ease;
     `;
         item.innerHTML = `
-      <div style="font-size: 14px; color: #fff; font-weight: 500; margin-bottom: 2px;">
+      <div style="font-size: 14px; color: ${theme === 'light' ? '#1a1a2e' : '#fff'}; font-weight: 500; margin-bottom: 2px;">
         ${escapeHtml(cred.title)}
       </div>
-      <div style="font-size: 12px; color: #8888aa;">
+      <div style="font-size: 12px; color: ${theme === 'light' ? '#666' : '#8888aa'};">
         ${escapeHtml(cred.username)}
       </div>
     `;
 
         item.addEventListener('mouseenter', () => {
-            item.style.background = '#1e1e1e';
+            item.style.background = theme === 'light' ? '#f5f5f5' : '#1e1e1e';
         });
         item.addEventListener('mouseleave', () => {
             item.style.background = 'transparent';
@@ -161,6 +175,7 @@ function createAutofillPopup(
         list.appendChild(item);
     });
 
+    autofillPopup.appendChild(header);
     autofillPopup.appendChild(list);
     document.body.appendChild(autofillPopup);
 

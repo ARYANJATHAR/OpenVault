@@ -9,7 +9,14 @@ import * as net from 'net';
 import * as path from 'path';
 import * as fs from 'fs';
 import { app, BrowserWindow } from 'electron';
+import Store from 'electron-store';
 import { vaultDb } from '../db/database';
+
+const store = new Store({
+    defaults: {
+        theme: 'dark'
+    }
+});
 
 // ============================================================================
 // Constants
@@ -153,6 +160,34 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                     payload: { id: newId },
                     requestId,
                 };
+
+            case 'getTheme':
+                return {
+                    type: 'theme',
+                    payload: { theme: store.get('theme', 'dark') },
+                    requestId,
+                };
+
+            case 'setTheme':
+                const theme = payload?.theme;
+                if (theme === 'light' || theme === 'dark') {
+                    store.set('theme', theme);
+                    // Notify main window
+                    const { BrowserWindow } = require('electron');
+                    const win = BrowserWindow.getAllWindows()[0];
+                    if (win) {
+                        win.webContents.send('theme-changed', theme);
+                    }
+                    // Broadcast to WebSocket clients
+                    const { broadcastToClients } = require('../main/ws-bridge');
+                    broadcastToClients({ type: 'theme-changed', theme });
+                    return {
+                        type: 'theme-set',
+                        payload: { success: true },
+                        requestId,
+                    };
+                }
+                return { type: 'error', error: 'Invalid theme', requestId };
 
             default:
                 return { type: 'error', error: `Unknown message type: ${type}`, requestId };
