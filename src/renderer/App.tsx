@@ -1,5 +1,221 @@
 import React, { useState, useEffect } from 'react';
 
+// Security Dashboard Component
+const SecurityDashboard: React.FC<{ audit: any; entries: Entry[]; onRefresh: () => void }> = ({ audit, entries, onRefresh }) => {
+    if (!audit) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <p>Loading security audit...</p>
+            </div>
+        );
+    }
+
+    const getSeverityColor = (severity: string) => {
+        switch (severity) {
+            case 'critical': return '#e74c3c';
+            case 'high': return '#f39c12';
+            case 'medium': return '#f1c40f';
+            case 'low': return '#3498db';
+            default: return '#95a5a6';
+        }
+    };
+
+    const getScoreColor = (score: number) => {
+        if (score >= 80) return '#2ecc71';
+        if (score >= 60) return '#3498db';
+        if (score >= 40) return '#f1c40f';
+        if (score >= 20) return '#f39c12';
+        return '#e74c3c';
+    };
+
+    return (
+        <div style={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
+            <header className="content-header" style={{ marginBottom: '24px' }}>
+                <h2>Security Dashboard</h2>
+                <button className="add-button" onClick={onRefresh}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                    </svg>
+                    Refresh
+                </button>
+            </header>
+
+            {/* Security Score */}
+            <div style={{ 
+                background: 'var(--bg-surface)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '8px', 
+                padding: '24px', 
+                marginBottom: '24px' 
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '400' }}>Security Score</h3>
+                    <div style={{ 
+                        fontSize: '32px', 
+                        fontWeight: '300', 
+                        color: getScoreColor(audit.securityScore) 
+                    }}>
+                        {audit.securityScore}/100
+                    </div>
+                </div>
+                <div style={{ 
+                    height: '8px', 
+                    background: 'var(--bg-base)', 
+                    borderRadius: '4px', 
+                    overflow: 'hidden' 
+                }}>
+                    <div style={{ 
+                        height: '100%', 
+                        width: `${audit.securityScore}%`, 
+                        background: getScoreColor(audit.securityScore),
+                        transition: 'all 0.3s ease'
+                    }} />
+                </div>
+            </div>
+
+            {/* Issue Summary */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(4, 1fr)', 
+                gap: '16px', 
+                marginBottom: '24px' 
+            }}>
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '16px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '24px', fontWeight: '300', color: '#e74c3c' }}>
+                        {audit.critical}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Critical
+                    </div>
+                </div>
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '16px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '24px', fontWeight: '300', color: '#f39c12' }}>
+                        {audit.high}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        High
+                    </div>
+                </div>
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '16px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '24px', fontWeight: '300', color: '#f1c40f' }}>
+                        {audit.medium}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Medium
+                    </div>
+                </div>
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '16px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '24px', fontWeight: '300', color: '#3498db' }}>
+                        {audit.low}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Low
+                    </div>
+                </div>
+            </div>
+
+            {/* Issues List */}
+            {audit.issues.length > 0 ? (
+                <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '400', marginBottom: '16px' }}>
+                        Security Issues ({audit.totalIssues})
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {audit.issues.map((issue: any, index: number) => (
+                            <div 
+                                key={index}
+                                style={{ 
+                                    background: 'var(--bg-surface)', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px', 
+                                    padding: '16px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px'
+                                }}
+                            >
+                                <div style={{ 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    borderRadius: '50%', 
+                                    background: getSeverityColor(issue.severity),
+                                    marginTop: '6px',
+                                    flexShrink: 0
+                                }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ 
+                                        fontSize: '14px', 
+                                        fontWeight: '500', 
+                                        marginBottom: '4px',
+                                        textTransform: 'capitalize'
+                                    }}>
+                                        {issue.type} - {issue.entryTitle}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                                        {issue.message}
+                                    </div>
+                                    {issue.recommendation && (
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                            💡 {issue.recommendation}
+                                        </div>
+                                    )}
+                                </div>
+                                <span style={{ 
+                                    fontSize: '10px', 
+                                    padding: '4px 8px', 
+                                    borderRadius: '4px',
+                                    background: getSeverityColor(issue.severity) + '20',
+                                    color: getSeverityColor(issue.severity),
+                                    textTransform: 'uppercase',
+                                    fontWeight: '500'
+                                }}>
+                                    {issue.severity}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div style={{ 
+                    textAlign: 'center', 
+                    padding: '40px', 
+                    color: 'var(--text-secondary)' 
+                }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    <h3 style={{ fontSize: '18px', fontWeight: '400', marginBottom: '8px' }}>All Clear!</h3>
+                    <p style={{ fontSize: '14px' }}>No security issues found</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Types for the Vault API exposed via preload
 declare global {
     interface Window {
@@ -23,6 +239,15 @@ declare global {
             };
             password: {
                 generate: (options?: { length?: number; uppercase?: boolean; lowercase?: boolean; numbers?: boolean; symbols?: boolean }) => Promise<string>;
+                checkStrength: (password: string) => Promise<{ score: number; level: string; feedback: string[] }>;
+            };
+            totp: {
+                generate: (secret: string) => Promise<{ success: boolean; code?: string; error?: string }>;
+                getTimeRemaining: () => Promise<number>;
+                validate: (secret: string) => Promise<boolean>;
+            };
+            security: {
+                audit: () => Promise<{ totalIssues: number; critical: number; high: number; medium: number; low: number; issues: any[]; securityScore: number }>;
             };
             app: {
                 getVersion: () => Promise<string>;
@@ -68,6 +293,12 @@ const App: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [showFavorites, setShowFavorites] = useState(false);
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const [currentView, setCurrentView] = useState<'vault' | 'security'>('vault');
+    const [totpCodes, setTotpCodes] = useState<Map<string, { code: string; timeRemaining: number }>>(new Map());
+    const [passwordStrength, setPasswordStrength] = useState<{ score: number; level: string; feedback: string[] } | null>(null);
+    const [securityAudit, setSecurityAudit] = useState<any>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showEditPassword, setShowEditPassword] = useState(false);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editDraft, setEditDraft] = useState({
@@ -75,7 +306,8 @@ const App: React.FC = () => {
         username: '',
         password: '',
         url: '',
-        notes: ''
+        notes: '',
+        totpSecret: ''
     });
 
     // Form state for new entry
@@ -84,7 +316,8 @@ const App: React.FC = () => {
         username: '',
         password: '',
         url: '',
-        notes: ''
+        notes: '',
+        totpSecret: ''
     });
 
     useEffect(() => {
@@ -112,6 +345,56 @@ const App: React.FC = () => {
             window.vaultAPI?.off('theme-changed', handleThemeChange);
         };
     }, []);
+
+    // TOTP timer - update codes every second
+    useEffect(() => {
+        const updateTOTPCodes = async () => {
+            const entriesWithTOTP = entries.filter(e => e.totpSecret && e.totpSecret.trim().length > 0);
+            if (entriesWithTOTP.length === 0) {
+                setTotpCodes(new Map());
+                return;
+            }
+
+            const newCodes = new Map<string, { code: string; timeRemaining: number }>();
+            
+            for (const entry of entriesWithTOTP) {
+                if (entry.totpSecret && entry.totpSecret.trim().length > 0) {
+                    try {
+                        const result = await window.vaultAPI?.totp.generate(entry.totpSecret);
+                        if (result?.success && result.code) {
+                            const timeRemaining = await window.vaultAPI?.totp.getTimeRemaining();
+                            newCodes.set(entry.id, { code: result.code, timeRemaining: timeRemaining || 0 });
+                        } else {
+                            console.error('TOTP generation failed:', result?.error);
+                        }
+                    } catch (error) {
+                        console.error('TOTP error for entry', entry.id, error);
+                    }
+                }
+            }
+            
+            setTotpCodes(newCodes);
+        };
+
+        updateTOTPCodes();
+        const interval = setInterval(updateTOTPCodes, 1000);
+        return () => clearInterval(interval);
+    }, [entries]);
+
+    // Password strength checker
+    useEffect(() => {
+        const checkStrength = async () => {
+            const passwordToCheck = isEditing ? editDraft.password : (isAddModalOpen ? newEntry.password : '');
+            if (passwordToCheck) {
+                const strength = await window.vaultAPI?.password.checkStrength(passwordToCheck);
+                setPasswordStrength(strength || null);
+            } else {
+                setPasswordStrength(null);
+            }
+        };
+
+        checkStrength();
+    }, [editDraft.password, newEntry.password, isEditing, isAddModalOpen]);
 
     const checkVaultStatus = async () => {
         try {
@@ -145,7 +428,8 @@ const App: React.FC = () => {
             username: entry.username,
             password: entry.password,
             url: entry.url || '',
-            notes: entry.notes || ''
+            notes: entry.notes || '',
+            totpSecret: entry.totpSecret || ''
         });
     };
 
@@ -218,13 +502,13 @@ const App: React.FC = () => {
         await window.vaultAPI?.entries.add({
             ...newEntry,
             url: url.length > 0 ? url : undefined,
-            totpSecret: null,
+            totpSecret: newEntry.totpSecret.length > 0 ? newEntry.totpSecret : undefined,
             folderId: null,
             lastUsedAt: null
         });
         await loadEntries();
         setIsAddModalOpen(false);
-        setNewEntry({ title: '', username: '', password: '', url: '', notes: '' });
+        setNewEntry({ title: '', username: '', password: '', url: '', notes: '', totpSecret: '' });
     };
 
     const handleCopy = async (text: string) => {
@@ -256,6 +540,11 @@ const App: React.FC = () => {
         await window.vaultAPI?.theme.set(newTheme);
         setTheme(newTheme);
         document.documentElement.setAttribute('data-theme', newTheme);
+    };
+
+    const loadSecurityAudit = async () => {
+        const audit = await window.vaultAPI?.security.audit();
+        setSecurityAudit(audit);
     };
 
     if (isLoading) return <div className="app loading-screen"><div className="spinner" /></div>;
@@ -330,8 +619,11 @@ const App: React.FC = () => {
                 </div>
                 <nav className="sidebar-nav">
                     <button 
-                        className={`nav-item ${!showFavorites ? 'active' : ''}`}
-                        onClick={() => setShowFavorites(false)}
+                        className={`nav-item ${!showFavorites && currentView === 'vault' ? 'active' : ''}`}
+                        onClick={() => {
+                            setShowFavorites(false);
+                            setCurrentView('vault');
+                        }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -341,13 +633,34 @@ const App: React.FC = () => {
                     </button>
                     <button 
                         className={`nav-item ${showFavorites ? 'active' : ''}`}
-                        onClick={() => setShowFavorites(true)}
+                        onClick={() => {
+                            setShowFavorites(true);
+                            setCurrentView('vault');
+                        }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                         </svg>
                         Favorites
                         {favoriteCount > 0 && <span className="count">{favoriteCount}</span>}
+                    </button>
+                    <button 
+                        className={`nav-item ${currentView === 'security' ? 'active' : ''}`}
+                        onClick={() => {
+                            setCurrentView('security');
+                            setShowFavorites(false);
+                            loadSecurityAudit();
+                        }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                        Security
+                        {securityAudit && securityAudit.totalIssues > 0 && (
+                            <span className="count" style={{ color: securityAudit.critical > 0 ? '#e74c3c' : securityAudit.high > 0 ? '#f39c12' : '#3498db' }}>
+                                {securityAudit.totalIssues}
+                            </span>
+                        )}
                     </button>
                 </nav>
                 <div className="sidebar-footer">
@@ -377,17 +690,21 @@ const App: React.FC = () => {
             </aside>
 
             <main className="main-content">
-                <header className="content-header">
-                    <h2>Explorer</h2>
-                    <button className="add-button" onClick={() => setIsAddModalOpen(true)}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M12 5v14M5 12h14" />
-                        </svg>
-                        New Entry
-                    </button>
-                </header>
+                {currentView === 'security' ? (
+                    <SecurityDashboard audit={securityAudit} entries={entries} onRefresh={loadSecurityAudit} />
+                ) : (
+                    <>
+                        <header className="content-header">
+                            <h2>Explorer</h2>
+                            <button className="add-button" onClick={() => setIsAddModalOpen(true)}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                New Entry
+                            </button>
+                        </header>
 
-                <div className="entry-list">
+                        <div className="entry-list">
                     <div className="entry-grid">
                         {filteredEntries.map(entry => (
                             <div
@@ -422,6 +739,8 @@ const App: React.FC = () => {
                         ))}
                     </div>
                 </div>
+                    </>
+                )}
             </main>
 
             {selectedEntry && (
@@ -498,6 +817,65 @@ const App: React.FC = () => {
                                     <button className="copy-pill" onClick={() => handleCopy(selectedEntry.password)}>Copy</button>
                                 </div>
                             </div>
+                            {selectedEntry.totpSecret && selectedEntry.totpSecret.trim().length > 0 && (
+                                <div className="info-field">
+                                    <div className="info-label">2FA Code</div>
+                                    <div className="info-value-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                        {totpCodes.get(selectedEntry.id) ? (
+                                            <>
+                                                <span className="info-value" style={{ 
+                                                    fontFamily: 'monospace', 
+                                                    fontSize: '20px', 
+                                                    fontWeight: '600',
+                                                    letterSpacing: '4px',
+                                                    color: 'var(--accent)'
+                                                }}>
+                                                    {totpCodes.get(selectedEntry.id)?.code}
+                                                </span>
+                                                <div style={{ 
+                                                    fontSize: '11px', 
+                                                    color: 'var(--text-muted)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    <div style={{
+                                                        width: '8px',
+                                                        height: '8px',
+                                                        borderRadius: '50%',
+                                                        background: totpCodes.get(selectedEntry.id)?.timeRemaining && totpCodes.get(selectedEntry.id)!.timeRemaining < 5 ? '#e74c3c' : '#2ecc71',
+                                                        animation: totpCodes.get(selectedEntry.id)?.timeRemaining && totpCodes.get(selectedEntry.id)!.timeRemaining < 5 ? 'pulse 1s infinite' : 'none'
+                                                    }} />
+                                                    {totpCodes.get(selectedEntry.id)?.timeRemaining}s
+                                                </div>
+                                                <button className="copy-pill" onClick={() => handleCopy(totpCodes.get(selectedEntry.id)?.code || '')}>Copy</button>
+                                            </>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                                                <span className="info-value" style={{ color: 'var(--text-muted)' }}>Generating...</span>
+                                                <button 
+                                                    className="copy-pill" 
+                                                    onClick={async () => {
+                                                        try {
+                                                            const result = await window.vaultAPI?.totp.generate(selectedEntry.totpSecret);
+                                                            if (result?.success) {
+                                                                alert(`Test code: ${result.code}\n\nIf this works, the secret is valid!`);
+                                                            } else {
+                                                                alert(`Error: ${result?.error || 'Unknown error'}\n\nPlease check your TOTP secret format.`);
+                                                            }
+                                                        } catch (error) {
+                                                            alert(`Error: ${(error as Error).message}`);
+                                                        }
+                                                    }}
+                                                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                >
+                                                    Test Secret
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             {selectedEntry.url && (
                                 <div className="info-field">
                                     <div className="info-label">Website</div>
@@ -536,11 +914,94 @@ const App: React.FC = () => {
                             </div>
                             <div className="form-group">
                                 <label>Secret</label>
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showEditPassword ? "text" : "password"}
+                                        value={editDraft.password}
+                                        onChange={e => setEditDraft({ ...editDraft, password: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowEditPassword(!showEditPassword)}
+                                        title={showEditPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showEditPassword ? (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                            </svg>
+                                        ) : (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                                {passwordStrength && (
+                                    <div style={{ marginTop: '8px' }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '8px',
+                                            marginBottom: '4px'
+                                        }}>
+                                            <div style={{ 
+                                                flex: 1, 
+                                                height: '4px', 
+                                                background: 'var(--bg-base)', 
+                                                borderRadius: '2px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{ 
+                                                    height: '100%', 
+                                                    width: `${passwordStrength.score}%`,
+                                                    background: passwordStrength.level === 'very-weak' ? '#e74c3c' :
+                                                                passwordStrength.level === 'weak' ? '#f39c12' :
+                                                                passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                                passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                    transition: 'all 0.3s ease'
+                                                }} />
+                                            </div>
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                color: passwordStrength.level === 'very-weak' ? '#e74c3c' :
+                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                        passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                        passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                textTransform: 'capitalize',
+                                                fontWeight: '500'
+                                            }}>
+                                                {passwordStrength.level.replace('-', ' ')}
+                                            </span>
+                                        </div>
+                                        {passwordStrength.feedback.length > 0 && (
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                {passwordStrength.feedback[0]}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="form-group">
+                                <label>2FA Secret (optional)</label>
                                 <input
-                                    type="password"
-                                    value={editDraft.password}
-                                    onChange={e => setEditDraft({ ...editDraft, password: e.target.value })}
+                                    type="text"
+                                    placeholder="Enter TOTP secret (e.g., JBSWY3DPEHPK3PXP) or otpauth:// URL"
+                                    value={editDraft.totpSecret}
+                                    onChange={e => setEditDraft({ ...editDraft, totpSecret: e.target.value })}
                                 />
+                                {editDraft.totpSecret && (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        {editDraft.totpSecret.length > 0 ? '✓ Secret entered' : ''}
+                                        {editDraft.totpSecret.startsWith('otpauth://') && (
+                                            <div style={{ marginTop: '2px', fontStyle: 'italic' }}>
+                                                otpauth:// URL detected
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="form-group">
                                 <label>Notes (optional)</label>
@@ -589,13 +1050,96 @@ const App: React.FC = () => {
                             </div>
                             <div className="form-group">
                                 <label>Secret</label>
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Password"
+                                        value={newEntry.password}
+                                        onChange={e => setNewEntry({ ...newEntry, password: e.target.value })}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        title={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                            </svg>
+                                        ) : (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                                {passwordStrength && (
+                                    <div style={{ marginTop: '8px' }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '8px',
+                                            marginBottom: '4px'
+                                        }}>
+                                            <div style={{ 
+                                                flex: 1, 
+                                                height: '4px', 
+                                                background: 'var(--bg-base)', 
+                                                borderRadius: '2px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{ 
+                                                    height: '100%', 
+                                                    width: `${passwordStrength.score}%`,
+                                                    background: passwordStrength.level === 'very-weak' ? '#e74c3c' :
+                                                                passwordStrength.level === 'weak' ? '#f39c12' :
+                                                                passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                                passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                    transition: 'all 0.3s ease'
+                                                }} />
+                                            </div>
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                color: passwordStrength.level === 'very-weak' ? '#e74c3c' :
+                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                        passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                        passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                textTransform: 'capitalize',
+                                                fontWeight: '500'
+                                            }}>
+                                                {passwordStrength.level.replace('-', ' ')}
+                                            </span>
+                                        </div>
+                                        {passwordStrength.feedback.length > 0 && (
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                {passwordStrength.feedback[0]}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="form-group">
+                                <label>2FA Secret (optional)</label>
                                 <input
-                                    type="password"
-                                    placeholder="Password"
-                                    value={newEntry.password}
-                                    onChange={e => setNewEntry({ ...newEntry, password: e.target.value })}
-                                    required
+                                    type="text"
+                                    placeholder="Enter TOTP secret (e.g., JBSWY3DPEHPK3PXP) or otpauth:// URL"
+                                    value={newEntry.totpSecret}
+                                    onChange={e => setNewEntry({ ...newEntry, totpSecret: e.target.value })}
                                 />
+                                {newEntry.totpSecret && (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        {newEntry.totpSecret.length > 0 ? '✓ Secret entered' : ''}
+                                        {newEntry.totpSecret.startsWith('otpauth://') && (
+                                            <div style={{ marginTop: '2px', fontStyle: 'italic' }}>
+                                                otpauth:// URL detected
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="form-actions" style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                                 <button type="button" className="btn-ghost" onClick={() => setIsAddModalOpen(false)}>Back</button>

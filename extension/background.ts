@@ -272,6 +272,30 @@ chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.Messa
                     return { success: true };
                 }
 
+            case 'getTOTP':
+                // Get TOTP code for an entry
+                try {
+                    const response = await sendToNativeApp({
+                        type: 'getTOTP',
+                        payload: { entryId: message.entryId },
+                    });
+                    return response.payload || null;
+                } catch (error) {
+                    return null;
+                }
+
+            case 'checkPasswordStrength':
+                // Check password strength
+                try {
+                    const response = await sendToNativeApp({
+                        type: 'checkPasswordStrength',
+                        payload: { password: message.password },
+                    });
+                    return response.payload || null;
+                } catch (error) {
+                    return null;
+                }
+
             default:
                 return { error: 'Unknown message type' };
         }

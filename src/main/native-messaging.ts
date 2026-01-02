@@ -103,6 +103,7 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                                 title: e?.title,
                                 username: e?.username,
                                 url: e?.url,
+                                totpSecret: e?.totpSecret || null,
                             })),
                         },
                         requestId,
@@ -111,23 +112,23 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                     return { type: 'credentials', payload: { entries: [] }, requestId };
                 }
 
-            case 'fillCredentials':
+            case 'fillCredentials': {
                 if (!vaultDb.isUnlocked()) {
                     return { type: 'error', error: 'Vault is locked', requestId };
                 }
 
-                const entryId = payload?.entryId;
-                if (!entryId) {
+                const fillEntryId = payload?.entryId;
+                if (!fillEntryId) {
                     return { type: 'error', error: 'Entry ID required', requestId };
                 }
 
-                const entry = vaultDb.getEntry(entryId);
+                const entry = vaultDb.getEntry(fillEntryId);
                 if (!entry) {
                     return { type: 'error', error: 'Entry not found', requestId };
                 }
 
                 // Record usage
-                vaultDb.recordEntryUsed(entryId);
+                vaultDb.recordEntryUsed(fillEntryId);
 
                 return {
                     type: 'fill',
@@ -137,21 +138,22 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                     },
                     requestId,
                 };
+            }
 
-            case 'saveCredentials':
+            case 'saveCredentials': {
                 if (!vaultDb.isUnlocked()) {
                     return { type: 'error', error: 'Vault is locked', requestId };
                 }
 
-                const { title, username, password, siteUrl } = payload || {};
-                if (!username || !password) {
+                const { title, username: saveUsername, password: savePassword, siteUrl } = payload || {};
+                if (!saveUsername || !savePassword) {
                     return { type: 'error', error: 'Username and password required', requestId };
                 }
 
                 const newId = vaultDb.addEntry({
                     title: title || new URL(siteUrl).hostname,
-                    username,
-                    password,
+                    username: saveUsername,
+                    password: savePassword,
                     url: siteUrl,
                 });
 
@@ -160,6 +162,7 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                     payload: { id: newId },
                     requestId,
                 };
+            }
 
             case 'getTheme':
                 return {
@@ -188,6 +191,42 @@ export async function handleMessage(message: NativeMessage): Promise<NativeRespo
                     };
                 }
                 return { type: 'error', error: 'Invalid theme', requestId };
+
+            case 'getTOTP': {
+                // Get TOTP code for an entry
+                const totpEntryId = payload?.entryId;
+                if (totpEntryId) {
+                    const { VaultDatabase } = require('../db/database');
+                    const vaultDb = VaultDatabase.getInstance();
+                    const entry = vaultDb.getEntry(totpEntryId);
+                    if (entry && entry.totpSecret) {
+                        const { generateTOTP, getTOTPTimeRemaining } = require('../core/totp');
+                        const code = generateTOTP(entry.totpSecret);
+                        const timeRemaining = getTOTPTimeRemaining();
+                        return {
+                            type: 'totp',
+                            payload: { code, timeRemaining },
+                            requestId,
+                        };
+                    }
+                }
+                return { type: 'error', error: 'No TOTP secret found', requestId };
+            }
+
+            case 'checkPasswordStrength': {
+                // Check password strength
+                const checkPassword = payload?.password;
+                if (checkPassword) {
+                    const { calculatePasswordStrength } = require('../core/password-strength');
+                    const strength = calculatePasswordStrength(checkPassword);
+                    return {
+                        type: 'password-strength',
+                        payload: strength,
+                        requestId,
+                    };
+                }
+                return { type: 'error', error: 'No password provided', requestId };
+            }
 
             default:
                 return { type: 'error', error: `Unknown message type: ${type}`, requestId };

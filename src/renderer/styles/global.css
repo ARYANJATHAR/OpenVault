@@ -30,6 +30,15 @@
 }
 
 /* Light Mode */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
 [data-theme="light"] {
     --bg-base: #ffffff;
     --bg-surface: #f8f9fa;
@@ -462,6 +471,39 @@ h3,
     font-weight: 300;
     border-radius: 4px;
     margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+.form-group input[type="password"],
+.form-group input[type="text"] {
+    padding-right: 40px;
+}
+
+.form-group .password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    transition: color 0.2s;
+}
+
+.form-group .password-toggle-btn:hover {
+    color: var(--text-primary);
+}
+
+.form-group .password-input-wrapper {
+    position: relative;
+    width: 100%;
 }
 
 .form-group input:focus {

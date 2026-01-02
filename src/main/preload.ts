@@ -80,6 +80,24 @@ const api = {
             symbols?: boolean;
         }) =>
             ipcRenderer.invoke('password:generate', options || {}),
+        checkStrength: (password: string) =>
+            ipcRenderer.invoke('password:checkStrength', password),
+    },
+
+    // TOTP operations
+    totp: {
+        generate: (secret: string) =>
+            ipcRenderer.invoke('totp:generate', secret),
+        getTimeRemaining: () =>
+            ipcRenderer.invoke('totp:getTimeRemaining'),
+        validate: (secret: string) =>
+            ipcRenderer.invoke('totp:validate', secret),
+    },
+
+    // Security audit
+    security: {
+        audit: () =>
+            ipcRenderer.invoke('security:audit'),
     },
 
     // App info

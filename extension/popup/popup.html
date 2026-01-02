@@ -91,6 +91,80 @@
     </footer>
   </div>
 
+  <!-- Add Password Modal -->
+  <div id="addPasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Password</h2>
+        <button id="closeModalBtn" class="close-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="addPasswordForm">
+        <div class="form-group">
+          <label for="passwordTitle">Title</label>
+          <input type="text" id="passwordTitle" placeholder="e.g., Gmail, Facebook" required>
+        </div>
+        <div class="form-group">
+          <label for="passwordUsername">Username/Email</label>
+          <input type="text" id="passwordUsername" placeholder="Enter username or email" required>
+        </div>
+        <div class="form-group">
+          <label for="passwordPassword">Password</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="passwordPassword" placeholder="Enter password" required>
+            <button type="button" id="togglePasswordVisibility" class="toggle-password-btn">
+              <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="passwordUrl">Website URL</label>
+          <input type="url" id="passwordUrl" placeholder="https://example.com" required>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="cancelBtn" class="secondary-btn">Cancel</button>
+          <button type="submit" id="saveBtn" class="primary-btn">Save Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Generated Password Display -->
+  <div id="generatedPasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Generated Password</h2>
+        <button id="closeGeneratedModalBtn" class="close-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="generated-password-container">
+        <div class="generated-password-display">
+          <input type="text" id="generatedPasswordValue" readonly>
+          <button type="button" id="copyGeneratedPassword" class="copy-btn" title="Copy password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+        <p class="generated-password-hint">Password has been generated. Copy it or add it to your vault.</p>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="useInFormBtn" class="secondary-btn">Add to Vault</button>
+        <button type="button" id="closeGeneratedBtn" class="primary-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

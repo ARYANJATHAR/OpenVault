@@ -336,6 +336,50 @@ ipcMain.handle('password:generate', (_, options: {
     return password;
 });
 
+// TOTP operations
+ipcMain.handle('totp:generate', (_, secret: string) => {
+    const { generateTOTP } = require('../core/totp');
+    try {
+        const code = generateTOTP(secret);
+        return { success: true, code };
+    } catch (error) {
+        return { success: false, error: (error as Error).message };
+    }
+});
+
+ipcMain.handle('totp:getTimeRemaining', () => {
+    const { getTOTPTimeRemaining } = require('../core/totp');
+    return getTOTPTimeRemaining();
+});
+
+ipcMain.handle('totp:validate', (_, secret: string) => {
+    const { validateTOTPSecret } = require('../core/totp');
+    return validateTOTPSecret(secret);
+});
+
+// Password strength
+ipcMain.handle('password:checkStrength', (_, password: string) => {
+    const { calculatePasswordStrength } = require('../core/password-strength');
+    return calculatePasswordStrength(password);
+});
+
+// Security audit
+ipcMain.handle('security:audit', () => {
+    const { performSecurityAudit } = require('../core/security-audit');
+    const entries = vaultDb.getAllEntries();
+    const entriesForAudit = entries
+        .filter((e): e is NonNullable<typeof e> => e !== null)
+        .map(e => ({
+            id: e.id,
+            title: e.title,
+            password: e.password,
+            createdAt: e.createdAt,
+            modifiedAt: e.modifiedAt,
+            lastUsedAt: e.lastUsedAt,
+        }));
+    return performSecurityAudit(entriesForAudit);
+});
+
 // App info
 ipcMain.handle('app:getVersion', () => {
     return app.getVersion();

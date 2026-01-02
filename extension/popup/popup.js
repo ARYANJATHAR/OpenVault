@@ -8,10 +8,11 @@
 // State
 // ============================================================================
 
-/** @type {Array<{id: string, title: string, username: string, url: (string|null)}>} */
+/** @type {Array<{id: string, title: string, username: string, url: (string|null), totpSecret?: string}>} */
 let credentials = [];
 
 let currentUrl = '';
+let totpCodes = new Map(); // Store TOTP codes: entryId -> {code, timeRemaining}
 
 // ============================================================================
 // DOM Elements
@@ -34,6 +35,25 @@ const addBtn = mustGet('addBtn');
 const generateBtn = mustGet('generateBtn');
 const themeToggleBtn = mustGet('themeToggleBtn');
 const themeIcon = mustGet('themeIcon');
+
+// Modal elements
+const addPasswordModal = mustGet('addPasswordModal');
+const closeModalBtn = mustGet('closeModalBtn');
+const addPasswordForm = mustGet('addPasswordForm');
+const passwordTitle = mustGet('passwordTitle');
+const passwordUsername = mustGet('passwordUsername');
+const passwordPassword = mustGet('passwordPassword');
+const passwordUrl = mustGet('passwordUrl');
+const togglePasswordVisibility = mustGet('togglePasswordVisibility');
+const cancelBtn = mustGet('cancelBtn');
+
+// Generated password modal elements
+const generatedPasswordModal = mustGet('generatedPasswordModal');
+const closeGeneratedModalBtn = mustGet('closeGeneratedModalBtn');
+const generatedPasswordValue = mustGet('generatedPasswordValue');
+const copyGeneratedPassword = mustGet('copyGeneratedPassword');
+const closeGeneratedBtn = mustGet('closeGeneratedBtn');
+const useInFormBtn = mustGet('useInFormBtn');
 
 // ============================================================================
 // UI Helpers
@@ -143,7 +163,53 @@ function renderCredentials(items) {
             e.stopPropagation();
             copyPassword(id);
         });
+
+        // TOTP code click handler
+        const totpElement = item.querySelector('.totp-code');
+        if (totpElement) {
+            totpElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const totpValue = totpElement.querySelector('.totp-code-value');
+                if (totpValue && totpValue.textContent !== '---') {
+                    navigator.clipboard.writeText(totpValue.textContent);
+                    // Visual feedback
+                    const originalText = totpValue.textContent;
+                    totpValue.textContent = 'Copied!';
+                    setTimeout(() => {
+                        totpValue.textContent = originalText;
+                    }, 1000);
+                }
+            });
+            totpElement.style.cursor = 'pointer';
+            totpElement.title = 'Click to copy TOTP code';
+        }
     });
+}
+
+// Update TOTP codes
+async function updateTOTPCodes() {
+    for (const cred of credentials) {
+        if (cred.totpSecret) {
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'getTOTP',
+                    entryId: cred.id,
+                });
+                if (response && response.code) {
+                    totpCodes.set(cred.id, { code: response.code, timeRemaining: response.timeRemaining || 0 });
+                    const totpElement = document.querySelector(`[data-totp-id="${cred.id}"]`);
+                    if (totpElement) {
+                        const codeValue = totpElement.querySelector('.totp-code-value');
+                        const timer = totpElement.querySelector('.totp-timer');
+                        if (codeValue) codeValue.textContent = response.code;
+                        if (timer) timer.textContent = `${response.timeRemaining || 0}s`;
+                    }
+                }
+            } catch (error) {
+                // Ignore errors
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -280,33 +346,290 @@ lockBtn.addEventListener('click', () => {
 
 openAppBtn.addEventListener('click', openVaultApp);
 
-addBtn.addEventListener('click', () => {
-    // Open add page or show modal
-    openVaultApp();
-});
+// ============================================================================
+// Modal Functions
+// ============================================================================
 
-generateBtn.addEventListener('click', async () => {
-    // Generate and copy password
+function openAddPasswordModal() {
+    // Auto-fill URL from current tab
+    passwordUrl.value = currentUrl || '';
+    
+    // Try to extract title from URL
+    if (currentUrl) {
+        try {
+            const urlObj = new URL(currentUrl);
+            passwordTitle.value = urlObj.hostname.replace('www.', '');
+        } catch {
+            // Invalid URL, leave title empty
+        }
+    }
+    
+    // Ensure all inputs are enabled and editable
+    passwordTitle.disabled = false;
+    passwordUsername.disabled = false;
+    passwordPassword.disabled = false;
+    passwordUrl.disabled = false;
+    passwordTitle.readOnly = false;
+    passwordUsername.readOnly = false;
+    passwordPassword.readOnly = false;
+    passwordUrl.readOnly = false;
+    
+    addPasswordModal.style.display = 'flex';
+    
+    // Small delay to ensure modal is rendered before focusing
+    setTimeout(() => {
+        passwordTitle.focus();
+        passwordTitle.select();
+    }, 50);
+}
+
+function closeAddPasswordModal() {
+    addPasswordModal.style.display = 'none';
+    addPasswordForm.reset();
+    
+    // Reset password visibility
+    isPasswordVisible = false;
+    passwordPassword.type = 'password';
+    const eyeIcon = mustGet('eyeIcon');
+    eyeIcon.innerHTML = `
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+    `;
+}
+
+function openGeneratedPasswordModal(password) {
+    generatedPasswordValue.value = password;
+    generatedPasswordModal.style.display = 'flex';
+}
+
+function closeGeneratedPasswordModal() {
+    generatedPasswordModal.style.display = 'none';
+    generatedPasswordValue.value = '';
+}
+
+// ============================================================================
+// Password Generation
+// ============================================================================
+
+function generatePassword(length = 20) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
-    const array = new Uint32Array(20);
+    const array = new Uint32Array(length);
     crypto.getRandomValues(array);
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < length; i++) {
         password += chars[array[i] % chars.length];
     }
+    return password;
+}
 
-    await navigator.clipboard.writeText(password);
-    showToast('Password generated & copied');
+// ============================================================================
+// Event Listeners
+// ============================================================================
+
+addBtn.addEventListener('click', () => {
+    openAddPasswordModal();
+});
+
+generateBtn.addEventListener('click', () => {
+    const password = generatePassword(20);
+    openGeneratedPasswordModal(password);
+});
+
+// Close modals
+closeModalBtn.addEventListener('click', closeAddPasswordModal);
+cancelBtn.addEventListener('click', closeAddPasswordModal);
+closeGeneratedModalBtn.addEventListener('click', closeGeneratedPasswordModal);
+closeGeneratedBtn.addEventListener('click', closeGeneratedPasswordModal);
+
+// Close modal on background click
+addPasswordModal.addEventListener('click', (e) => {
+    if (e.target === addPasswordModal) {
+        closeAddPasswordModal();
+    }
+});
+
+// Prevent modal content clicks from closing the modal
+const modalContent = addPasswordModal.querySelector('.modal-content');
+if (modalContent) {
+    modalContent.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+generatedPasswordModal.addEventListener('click', (e) => {
+    if (e.target === generatedPasswordModal) {
+        closeGeneratedPasswordModal();
+    }
+});
+
+// Prevent generated modal content clicks from closing the modal
+const generatedModalContent = generatedPasswordModal.querySelector('.modal-content');
+if (generatedModalContent) {
+    generatedModalContent.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+// Password visibility toggle
+let isPasswordVisible = false;
+togglePasswordVisibility.addEventListener('click', () => {
+    isPasswordVisible = !isPasswordVisible;
+    passwordPassword.type = isPasswordVisible ? 'text' : 'password';
+    
+    const eyeIcon = mustGet('eyeIcon');
+    if (isPasswordVisible) {
+        eyeIcon.innerHTML = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+        `;
+    } else {
+        eyeIcon.innerHTML = `
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+        `;
+    }
+});
+
+// Copy generated password
+copyGeneratedPassword.addEventListener('click', async () => {
+    const password = generatedPasswordValue.value;
+    if (password) {
+        await navigator.clipboard.writeText(password);
+        showToast('Password copied to clipboard');
+        
+        // Visual feedback
+        const originalText = copyGeneratedPassword.innerHTML;
+        copyGeneratedPassword.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        `;
+        setTimeout(() => {
+            copyGeneratedPassword.innerHTML = originalText;
+        }, 1000);
+    }
+});
+
+// Use generated password in add form
+useInFormBtn.addEventListener('click', () => {
+    const password = generatedPasswordValue.value;
+    if (password) {
+        closeGeneratedPasswordModal();
+        openAddPasswordModal();
+        passwordPassword.value = password;
+        passwordPassword.type = 'text'; // Show it since it was generated
+        isPasswordVisible = true;
+        
+        // Update eye icon
+        const eyeIcon = mustGet('eyeIcon');
+        eyeIcon.innerHTML = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+        `;
+    }
+});
+
+// Form submission
+addPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const title = passwordTitle.value.trim();
+    const username = passwordUsername.value.trim();
+    const password = passwordPassword.value;
+    const url = passwordUrl.value.trim();
+    
+    if (!title || !username || !password || !url) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    // Validate URL
+    try {
+        new URL(url);
+    } catch {
+        showToast('Please enter a valid URL', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const saveBtn = mustGet('saveBtn');
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: 'saveCredentials',
+            title,
+            username,
+            password,
+            url,
+        });
+        
+        // Response can be the ID string directly or an object with id
+        const entryId = typeof response === 'string' ? response : (response?.id || response);
+        
+        if (entryId) {
+            showToast('Password saved successfully!');
+            closeAddPasswordModal();
+            
+            // Refresh credentials list
+            credentials = await chrome.runtime.sendMessage({
+                type: 'getCredentials',
+                url: currentUrl,
+            }) || [];
+            renderCredentials(credentials);
+        } else {
+            showToast('Failed to save password', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to save password:', error);
+        showToast('Failed to save password. Is the Vault app running?', 'error');
+    } finally {
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+    }
 });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        // Close modal if open, otherwise close popup
+        if (addPasswordModal.style.display === 'flex') {
+            closeAddPasswordModal();
+            e.preventDefault();
+            return;
+        }
+        if (generatedPasswordModal.style.display === 'flex') {
+            closeGeneratedPasswordModal();
+            e.preventDefault();
+            return;
+        }
         window.close();
     }
 
-    // Focus search on any letter key
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && document.activeElement !== searchInput) {
+    // Check if user is typing in an input field (including modal inputs)
+    const activeElement = document.activeElement;
+    const isInputField = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable
+    );
+    
+    // Check if any modal is open
+    const isModalOpen = addPasswordModal.style.display === 'flex' || 
+                       generatedPasswordModal.style.display === 'flex';
+
+    // Only focus search on any letter key if:
+    // 1. Not typing in an input field
+    // 2. No modal is open
+    // 3. Search input is not already focused
+    if (e.key.length === 1 && 
+        !e.ctrlKey && 
+        !e.metaKey && 
+        !isInputField && 
+        !isModalOpen && 
+        document.activeElement !== searchInput) {
         searchInput.focus();
     }
 });
@@ -383,3 +706,8 @@ chrome.runtime.sendMessage({ type: 'syncTheme' }).catch(() => {
 
 // Initialize
 init();
+
+// Update TOTP codes every second
+setInterval(updateTOTPCodes, 1000);
+// Initial update after a short delay to ensure credentials are loaded
+setTimeout(updateTOTPCodes, 500);
