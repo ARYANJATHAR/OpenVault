@@ -10,6 +10,8 @@ import {
   deriveKeys,
   encryptToString,
   decryptFromString,
+  decryptFromStringV1,
+  decryptLegacyRaw,
   createVaultHeader,
   hashMasterKey,
 } from './cryptoService';
@@ -94,6 +96,9 @@ class VaultService {
   async openVault(password: string): Promise<boolean> {
     const db = await this.getDatabase();
 
+    // Run migration on open
+    await this.migrateDatabase(db);
+
     // Get vault metadata
     const meta = await db.getFirstAsync<{ salt: string; key_hash: string }>(
       'SELECT salt, key_hash FROM vault_meta LIMIT 1'
@@ -146,7 +151,14 @@ class VaultService {
 
     const entries: VaultEntry[] = [];
     for (const row of rows) {
-      entries.push(this.decryptEntry(row));
+      try {
+        const entry = this.decryptEntry(row);
+        entries.push(entry);
+      } catch (error) {
+        console.error(`Failed to decrypt entry ${row.id}:`, error);
+        // Skip corrupted entries instead of crashing
+        continue;
+      }
     }
     return entries;
   }
@@ -167,7 +179,12 @@ class VaultService {
       return null;
     }
 
-    return this.decryptEntry(row);
+    try {
+      return this.decryptEntry(row);
+    } catch (error) {
+      console.error(`Failed to decrypt entry ${id}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -184,8 +201,8 @@ class VaultService {
     const encrypted = await this.encryptEntry(entry);
 
     await db.runAsync(
-      `INSERT INTO entries (id, title_encrypted, username_encrypted, password_encrypted, url, notes_encrypted, totp_secret_encrypted, folder_id, created_at, modified_at, sync_version, is_favorite) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO entries (id, title_encrypted, username_encrypted, password_encrypted, url, notes_encrypted, totp_secret_encrypted, folder_id, created_at, modified_at, sync_version, is_favorite, encryption_version) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         encrypted.title,
@@ -199,6 +216,7 @@ class VaultService {
         now,
         0,
         entry.isFavorite ? 1 : 0,
+        2, // Current encryption version
       ]
     );
 
@@ -224,7 +242,7 @@ class VaultService {
       `UPDATE entries SET 
         title_encrypted = ?, username_encrypted = ?, password_encrypted = ?, 
         url = ?, notes_encrypted = ?, totp_secret_encrypted = ?, 
-        modified_at = ?, sync_version = sync_version + 1, is_favorite = ?
+        modified_at = ?, sync_version = sync_version + 1, is_favorite = ?, encryption_version = ?
        WHERE id = ?`,
       [
         encrypted.title,
@@ -235,6 +253,7 @@ class VaultService {
         encrypted.totpSecret,
         updated.modifiedAt,
         updated.isFavorite ? 1 : 0,
+        2, // Current encryption version
         id,
       ]
     );
@@ -290,7 +309,14 @@ class VaultService {
 
     const entries: VaultEntry[] = [];
     for (const row of rows) {
-      entries.push(this.decryptEntry(row));
+      try {
+        const entry = this.decryptEntry(row);
+        entries.push(entry);
+      } catch (error) {
+        console.error(`Failed to decrypt favorite entry ${row.id}:`, error);
+        // Skip corrupted entries instead of crashing
+        continue;
+      }
     }
     return entries;
   }
@@ -340,9 +366,40 @@ class VaultService {
         last_used_at INTEGER,
         sync_version INTEGER DEFAULT 0,
         is_deleted INTEGER DEFAULT 0,
-        is_favorite INTEGER DEFAULT 0
+        is_favorite INTEGER DEFAULT 0,
+        encryption_version INTEGER DEFAULT 1
       );
     `);
+    
+    // Run migration to add encryption_version column if it doesn't exist
+    await this.migrateDatabase(db);
+  }
+
+  /**
+   * Migrate database schema to support encryption versioning
+   */
+  private async migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
+    try {
+      // Check if encryption_version column exists
+      const tableInfo = await db.getAllAsync<{ name: string }>(
+        "PRAGMA table_info(entries)"
+      );
+      
+      const hasEncryptionVersion = tableInfo.some(
+        (col) => col.name === 'encryption_version'
+      );
+      
+      if (!hasEncryptionVersion) {
+        // Add encryption_version column with default value 1 (old entries)
+        await db.execAsync(`
+          ALTER TABLE entries ADD COLUMN encryption_version INTEGER DEFAULT 1;
+        `);
+        console.log('Database migrated: added encryption_version column');
+      }
+    } catch (error) {
+      // Column might already exist, ignore error
+      console.warn('Migration check failed (may already be migrated):', error);
+    }
   }
 
   private async encryptEntry(entry: Partial<VaultEntry>): Promise<{
@@ -367,28 +424,135 @@ class VaultService {
     };
   }
 
+  /**
+   * Decrypt a single field with version support and multiple fallbacks
+   */
+  private decryptField(
+    ciphertext: string | null | undefined,
+    encryptionVersion: number | null | undefined,
+    fieldName: string
+  ): string {
+    if (!ciphertext || typeof ciphertext !== 'string' || ciphertext.length === 0) {
+      return '';
+    }
+
+    const key = this.encryptionKey!;
+
+    // 1. Try Version 2 (Current Format: IV + Ciphertext)
+    try {
+      const v2 = decryptFromString(ciphertext, key);
+      if (v2) {
+        return v2;
+      }
+    } catch (e) {
+      // Continue to fallback
+    }
+
+    // 2. Try Version 1 (Legacy CBC)
+    try {
+      const v1 = decryptFromStringV1(ciphertext, key);
+      if (v1) {
+        return v1;
+      }
+    } catch (e) {
+      // Continue to fallback
+    }
+
+    // 3. Try Version 0 (Raw AES Fallback)
+    try {
+      const v0 = decryptLegacyRaw(ciphertext, key);
+      if (v0) {
+        return v0;
+      }
+    } catch (e) {
+      // Continue to fallback
+    }
+
+    console.warn(`Permanent decryption failure for ${fieldName} in entry`);
+    return `[Corrupted ${fieldName}]`;
+  }
+
   private decryptEntry(row: Record<string, unknown>): VaultEntry {
     if (!this.encryptionKey) throw new Error('Vault is locked');
 
-    return {
-      id: row.id as string,
-      title: decryptFromString(row.title_encrypted as string, this.encryptionKey),
-      username: decryptFromString(row.username_encrypted as string, this.encryptionKey),
-      password: decryptFromString(row.password_encrypted as string, this.encryptionKey),
-      url: row.url as string | null,
-      notes: row.notes_encrypted
-        ? decryptFromString(row.notes_encrypted as string, this.encryptionKey)
-        : null,
-      totpSecret: row.totp_secret_encrypted
-        ? decryptFromString(row.totp_secret_encrypted as string, this.encryptionKey)
-        : null,
-      folderId: row.folder_id as string | null,
-      createdAt: row.created_at as number,
-      modifiedAt: row.modified_at as number,
-      lastUsedAt: row.last_used_at as number | null,
-      syncVersion: row.sync_version as number,
-      isFavorite: (row.is_favorite as number) === 1,
-    };
+    // Validate required encrypted fields exist
+    const titleEncrypted = row.title_encrypted as string;
+    const usernameEncrypted = row.username_encrypted as string;
+    const passwordEncrypted = row.password_encrypted as string;
+    const encryptionVersion = (row.encryption_version as number) ?? 1;
+
+    try {
+      // Decrypt all fields with version support and fallback
+      const title = this.decryptField(titleEncrypted, encryptionVersion, 'title');
+      const username = this.decryptField(usernameEncrypted, encryptionVersion, 'username');
+      const password = this.decryptField(passwordEncrypted, encryptionVersion, 'password');
+      const notes = this.decryptField(
+        row.notes_encrypted as string | null | undefined,
+        encryptionVersion,
+        'notes'
+      );
+      const totpSecret = this.decryptField(
+        row.totp_secret_encrypted as string | null | undefined,
+        encryptionVersion,
+        'totpSecret'
+      );
+
+      const entry: VaultEntry = {
+        id: row.id as string,
+        title: title || '[Untitled]',
+        username: username || '',
+        password: password || '',
+        url: row.url as string | null,
+        notes: notes || null,
+        totpSecret: totpSecret || null,
+        folderId: row.folder_id as string | null,
+        createdAt: row.created_at as number,
+        modifiedAt: row.modified_at as number,
+        lastUsedAt: row.last_used_at as number | null,
+        syncVersion: row.sync_version as number,
+        isFavorite: (row.is_favorite as number) === 1,
+      };
+
+      // Auto-migration disabled for now - will handle database storage separately
+      // This ensures entries display correctly without modifying the database
+
+      return entry;
+    } catch (error) {
+      throw new Error(`Failed to decrypt entry ${row.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Migrate an entry from old encryption version to version 2
+   */
+  private async migrateEntryToV2(entryId: string, decryptedEntry: VaultEntry): Promise<void> {
+    try {
+      const encrypted = await this.encryptEntry(decryptedEntry);
+      const db = await this.getDatabase();
+
+      await db.runAsync(
+        `UPDATE entries SET 
+          title_encrypted = ?, username_encrypted = ?, password_encrypted = ?, 
+          notes_encrypted = ?, totp_secret_encrypted = ?, 
+          encryption_version = ?, modified_at = ?, sync_version = sync_version + 1
+         WHERE id = ?`,
+        [
+          encrypted.title,
+          encrypted.username,
+          encrypted.password,
+          encrypted.notes,
+          encrypted.totpSecret,
+          2, // New encryption version
+          Date.now(),
+          entryId,
+        ]
+      );
+
+      console.log(`Successfully migrated entry ${entryId} to encryption version 2`);
+    } catch (error) {
+      console.error(`Failed to migrate entry ${entryId}:`, error);
+      throw error;
+    }
   }
 }
 

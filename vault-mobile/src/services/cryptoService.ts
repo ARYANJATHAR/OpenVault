@@ -86,7 +86,15 @@ export async function encryptToString(plaintext: string, key: string): Promise<s
   
   // Generate IV using expo-crypto (secure random)
   const ivBytes = await Crypto.getRandomBytesAsync(16);
-  const iv = CryptoJS.lib.WordArray.create(Array.from(ivBytes));
+  // IMPORTANT: CryptoJS WordArray "words" are 32-bit; passing a byte[] makes a 64-byte IV.
+  // Build a proper 16-byte WordArray.
+  const ivWords: number[] = [];
+  for (let i = 0; i < ivBytes.length; i += 4) {
+    ivWords.push(
+      ((ivBytes[i]! << 24) | (ivBytes[i + 1]! << 16) | (ivBytes[i + 2]! << 8) | ivBytes[i + 3]!) >>> 0
+    );
+  }
+  const iv = CryptoJS.lib.WordArray.create(ivWords, 16);
   
   const encrypted = CryptoJS.AES.encrypt(plaintext, keyBytes, {
     iv: iv,
@@ -100,25 +108,100 @@ export async function encryptToString(plaintext: string, key: string): Promise<s
 }
 
 /**
- * Decrypt string with AES-256-CBC
+ * Decrypt string with AES (Version 0 - Absolute legacy fallback)
  */
-export function decryptFromString(ciphertext: string, key: string): string {
-  const keyBytes = CryptoJS.enc.Base64.parse(key);
-  const combined = CryptoJS.enc.Base64.parse(ciphertext);
-  
-  // Extract IV (first 16 bytes = 4 words) and encrypted data
-  const iv = CryptoJS.lib.WordArray.create(combined.words.slice(0, 4));
-  const encrypted = CryptoJS.lib.WordArray.create(combined.words.slice(4));
-  
-  const decrypted = CryptoJS.AES.decrypt(
-    { ciphertext: encrypted } as CryptoJS.lib.CipherParams,
-    keyBytes,
-    {
-      iv: iv,
+export function decryptLegacyRaw(ciphertext: string, key: string): string {
+  if (!ciphertext || !key) return '';
+  try {
+    const decrypted = CryptoJS.AES.decrypt(ciphertext, key);
+    const result = decrypted.toString(CryptoJS.enc.Utf8);
+    return result;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Decrypt string with AES-256-CBC (Version 1 - legacy format)
+ */
+export function decryptFromStringV1(ciphertext: string, key: string): string {
+  if (!ciphertext || typeof ciphertext !== 'string') return '';
+  if (!key) throw new Error('Encryption key missing');
+
+  try {
+    const keyBytes = CryptoJS.enc.Base64.parse(key);
+    const decrypted = CryptoJS.AES.decrypt(ciphertext, keyBytes, {
       mode: CryptoJS.mode.CBC,
       padding: CryptoJS.pad.Pkcs7,
+    });
+    
+    const result = decrypted.toString(CryptoJS.enc.Utf8);
+    if (!result && ciphertext.length > 0) throw new Error('V1 decryption returned empty');
+    return result;
+  } catch (error) {
+    throw new Error('V1 decryption failed');
+  }
+}
+
+/**
+ * Decrypt string with AES-256-CBC (Version 2 - current format)
+ */
+export function decryptFromString(ciphertext: string, key: string): string {
+  if (!ciphertext || typeof ciphertext !== 'string') return '';
+  if (!key) throw new Error('Encryption key missing');
+
+  try {
+    const keyBytes = CryptoJS.enc.Base64.parse(key);
+    const combined = CryptoJS.enc.Base64.parse(ciphertext);
+    
+    // Safety check for WordArray
+    if (!combined || !combined.words || combined.words.length < 4) {
+      throw new Error('Invalid or too short ciphertext');
     }
-  );
-  
-  return decrypted.toString(CryptoJS.enc.Utf8);
+    
+    const tryDecryptCbc = (ivWordStart: number, ivWordCount: number, ctWordStart: number, ctSigBytes: number, label: string) => {
+      const ivWordsLocal = combined.words.slice(ivWordStart, ivWordStart + ivWordCount);
+      const iv = CryptoJS.lib.WordArray.create(ivWordsLocal, 16);
+      const ctWordsLocal = combined.words.slice(ctWordStart);
+      const encryptedData = CryptoJS.lib.WordArray.create(ctWordsLocal, ctSigBytes);
+
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: encryptedData } as CryptoJS.lib.CipherParams,
+        keyBytes,
+        { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+      );
+
+      if (!decrypted || !decrypted.words || decrypted.words.length === 0) return null;
+
+      try {
+        const plaintext = decrypted.toString(CryptoJS.enc.Utf8);
+        return plaintext;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // Attempt A (expected format): [16-byte IV][ciphertext...]
+    const ctSigBytesA = combined.sigBytes - 16;
+    const plaintextA =
+      ctSigBytesA > 0 ? tryDecryptCbc(0, 4, 4, ctSigBytesA, 'cbc16') : null;
+    if (plaintextA && plaintextA.length > 0) return plaintextA;
+
+    // Attempt B (legacy buggy packing): [64-byte IV-block][ciphertext...]
+    // The stored prefix is 16 words (=64 bytes) because IV bytes were incorrectly treated as words.
+    const ctSigBytesB = combined.sigBytes - 64;
+    const plaintextB =
+      ctSigBytesB > 0 && combined.words.length >= 16
+        ? tryDecryptCbc(0, 4, 16, ctSigBytesB, 'cbc64')
+        : null;
+    if (plaintextB !== null) return plaintextB;
+
+    // If A produced empty string, still prefer it over throwing (caller will fallback)
+    if (plaintextA !== null) return plaintextA;
+
+    throw new Error('Decryption resulted in no valid plaintext');
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Decryption failed: ${msg}`);
+  }
 }
