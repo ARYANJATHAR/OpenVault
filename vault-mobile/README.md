@@ -23,7 +23,7 @@ React Native + Expo mobile application for Vault Password Manager. Syncs with de
 ### Prerequisites
 
 - Node.js 18+
-- Expo CLI (`npm install -g expo-cli`)
+- Expo CLI (`npx expo ...`) or global (`npm i -g expo`)
 - Expo Go app on your phone (for development)
 
 ### Installation
@@ -51,6 +51,27 @@ npm run android
 ```bash
 npm run ios
 ```
+
+## Build a Standalone Android APK (EAS)
+
+This project is ready for EAS builds (standalone APK). First-time setup:
+
+```bash
+cd vault-mobile
+npm i -g eas-cli
+eas login
+eas build:configure
+```
+
+Then build an APK:
+
+```bash
+eas build -p android --profile preview
+```
+
+Notes:
+- The APK download link will be printed by EAS after the build completes.
+- If you want to use your own icons/splash, add the PNGs into `assets/` and reference them in `app.json`.
 
 ## Project Structure
 

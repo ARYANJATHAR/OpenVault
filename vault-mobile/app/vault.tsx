@@ -133,7 +133,7 @@ export default function VaultScreen() {
             style={[styles.addButton, { backgroundColor: colors.accent }]}
             onPress={handleAddEntry}
           >
-            <Ionicons name="add" size={22} color="#000" />
+            <Ionicons name="add" size={22} color={colors.bgBase} />
           </TouchableOpacity>
         </View>
       </View>

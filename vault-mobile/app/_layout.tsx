@@ -3,7 +3,8 @@
  * Provides theme and vault context to the app
  */
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,7 +21,9 @@ import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { VaultProvider } from '../src/context/VaultContext';
 
 // Keep splash screen visible while loading fonts
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // no-op: can throw if called multiple times during fast refresh
+});
 
 function RootLayoutNav() {
   const { colors, theme } = useTheme();
@@ -57,6 +60,8 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  // Note: Ionicons font is automatically bundled by @expo/vector-icons in SDK 52+
+  // Do NOT manually load Ionicons.font here - it breaks production APK builds
   const [fontsLoaded, fontError] = useFonts({
     Inter_300Light,
     Inter_400Regular,
@@ -65,21 +70,27 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  useEffect(() => {
+  const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      await SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    onLayoutRootView();
+  }, [onLayoutRootView]);
 
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
-    <ThemeProvider>
-      <VaultProvider>
-        <RootLayoutNav />
-      </VaultProvider>
-    </ThemeProvider>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <ThemeProvider>
+        <VaultProvider>
+          <RootLayoutNav />
+        </VaultProvider>
+      </ThemeProvider>
+    </View>
   );
 }
