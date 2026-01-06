@@ -531,14 +531,18 @@ async function handleMobileSyncMessage(message: any, connId: string) {
             }
 
             const mobileEntries = message.payload.entries || [];
+            let importedCount = 0;
+            let updatedCount = 0;
+            let skippedCount = 0;
+
             if (mobileEntries.length > 0) {
                 // Import entries from mobile
                 for (const entry of mobileEntries) {
                     try {
-                        // Check if entry already exists
+                        // Check if entry already exists by ID
                         const existing = vaultDb.getEntry(entry.id);
                         if (existing) {
-                            // Update if mobile version is newer
+                            // Entry exists - update only if mobile version is newer
                             if (entry.modifiedAt > existing.modifiedAt) {
                                 vaultDb.updateEntry(entry.id, {
                                     title: entry.title,
@@ -559,11 +563,15 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                                         vaultDb.toggleFavorite(entry.id);
                                     }
                                 }
+                                updatedCount++;
+                            } else {
+                                // Desktop version is newer or same - skip
+                                skippedCount++;
                             }
                         } else {
-                            // Add new entry - need to insert with mobile's ID
-                            // Use addEntry first, then update the ID and timestamps if needed
-                            const newId = vaultDb.addEntry({
+                            // New entry - add with mobile's ID to prevent duplicates
+                            vaultDb.addEntryWithId({
+                                id: entry.id,
                                 title: entry.title,
                                 username: entry.username,
                                 password: entry.password,
@@ -571,22 +579,27 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                                 notes: entry.notes,
                                 totpSecret: entry.totpSecret,
                                 folderId: entry.folderId,
+                                createdAt: entry.createdAt,
+                                modifiedAt: entry.modifiedAt,
+                                isFavorite: entry.isFavorite || false,
                             });
-                            
-                            // If IDs don't match, we'll keep the new ID (sync will handle conflicts)
-                            // Set favorite status if needed
-                            if (entry.isFavorite) {
-                                vaultDb.toggleFavorite(newId);
-                            }
+                            importedCount++;
                         }
                     } catch (error) {
                         console.error(`Failed to import entry ${entry.id}:`, error);
                     }
                 }
                 
+                console.log(`Sync complete: ${importedCount} imported, ${updatedCount} updated, ${skippedCount} skipped`);
+                
                 // Notify renderer to refresh
                 mainWindow?.webContents.send('entry-updated');
-                mainWindow?.webContents.send('mobile-sync-complete', { count: mobileEntries.length });
+                mainWindow?.webContents.send('mobile-sync-complete', { 
+                    count: importedCount + updatedCount,
+                    imported: importedCount,
+                    updated: updatedCount,
+                    skipped: skippedCount
+                });
             }
             break;
 

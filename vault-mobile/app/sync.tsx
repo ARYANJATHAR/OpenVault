@@ -68,10 +68,12 @@ export default function SyncScreen() {
         const handleSyncRequest = async () => {
             // Desktop is requesting entries from mobile
             // Check unlock status directly from vault service
+            console.log('Processing sync request from desktop...');
             try {
                 // Fetch fresh entries directly from vault service (not React state)
                 // This will throw if vault is locked
                 const allEntries = await vaultService.getAllEntries();
+                console.log(`Fetched ${allEntries.length} entries from vault`);
                 
                 // Convert mobile entries to sync format
                 const syncEntries = allEntries.map(e => ({
@@ -89,12 +91,16 @@ export default function SyncScreen() {
                 }));
                 
                 syncService.sendSyncResponse(syncEntries);
+                console.log(`Sent ${syncEntries.length} entries to desktop`);
             } catch (error) {
                 // Vault is locked or error occurred
                 console.error('Failed to fetch entries for sync:', error);
                 syncService.sendSyncResponse([]);
             }
         };
+
+        // Register handler with sync service (so it works even if component unmounts)
+        syncService.setSyncRequestHandler(handleSyncRequest);
 
         syncService.on('status-changed', handleStatusChange);
         syncService.on('welcome', handleWelcome);
@@ -115,6 +121,7 @@ export default function SyncScreen() {
             syncService.off('disconnected', handleDisconnected);
             syncService.off('error', handleError);
             syncService.off('sync-request-received', handleSyncRequest);
+            // Don't clear the handler - keep it active even when component unmounts
         };
     }, []); // Empty deps - handler fetches fresh data from vault service
 

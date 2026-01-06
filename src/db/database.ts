@@ -255,6 +255,51 @@ export class VaultDatabase {
     }
 
     /**
+     * Add entry with specific ID (for sync purposes)
+     */
+    addEntryWithId(entry: {
+        id: string;
+        title: string;
+        username: string;
+        password: string;
+        url?: string;
+        notes?: string;
+        totpSecret?: string;
+        folderId?: string;
+        createdAt: number;
+        modifiedAt: number;
+        isFavorite?: boolean;
+    }): void {
+        this.ensureUnlocked();
+
+        const key = this.encryptionKey!;
+
+        const stmt = this.db!.prepare(`
+      INSERT INTO entries (
+        id, title_encrypted, username_encrypted, password_encrypted,
+        url, notes_encrypted, totp_secret_encrypted, folder_id,
+        created_at, modified_at, sync_version, is_favorite
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+    `);
+
+        stmt.run(
+            entry.id,
+            encryptToString(entry.title, key),
+            encryptToString(entry.username, key),
+            encryptToString(entry.password, key),
+            entry.url || null,
+            entry.notes ? encryptToString(entry.notes, key) : null,
+            entry.totpSecret ? encryptToString(entry.totpSecret, key) : null,
+            entry.folderId || null,
+            entry.createdAt,
+            entry.modifiedAt,
+            entry.isFavorite ? 1 : 0
+        );
+
+        this.logSync(entry.id, 'create');
+    }
+
+    /**
      * Get an entry by ID (decrypted)
      */
     getEntry(id: string): {

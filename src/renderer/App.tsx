@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateQRCodeSVG } from './qrcode';
 
 // Mobile Sync Panel Component
@@ -9,16 +9,33 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
     const [connectedCount, setConnectedCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncCount, setLastSyncCount] = useState<number | null>(null);
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadSyncInfo();
         const interval = setInterval(loadSyncInfo, 3000); // Refresh every 3 seconds
         
         // Listen for sync completion
-        const handleSyncComplete = (data: { count: number }) => {
+        const handleSyncComplete = (data: { count: number; imported?: number; updated?: number; skipped?: number }) => {
             setLastSyncCount(data.count);
             setIsSyncing(false);
+            
+            // Clear timeout
+            if (syncTimeoutRef.current) {
+                clearTimeout(syncTimeoutRef.current);
+                syncTimeoutRef.current = null;
+            }
+            
             onEntriesRefresh(); // Refresh entries list
+            
+            // Show success message
+            if (data.count > 0) {
+                const details = [];
+                if (data.imported) details.push(`${data.imported} new`);
+                if (data.updated) details.push(`${data.updated} updated`);
+                if (data.skipped) details.push(`${data.skipped} skipped`);
+                console.log(`Sync complete: ${details.join(', ')}`);
+            }
         };
         
         window.vaultAPI?.on('mobile-sync-complete', handleSyncComplete);
@@ -125,20 +142,47 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                     <button
                         className="add-button"
                         onClick={async () => {
+                            if (isSyncing) return; // Prevent double-click
+                            
+                            // Clear any existing timeout
+                            if (syncTimeoutRef.current) {
+                                clearTimeout(syncTimeoutRef.current);
+                                syncTimeoutRef.current = null;
+                            }
+                            
                             setIsSyncing(true);
-                            const result = await window.vaultAPI?.mobileSync.requestSync();
-                            if (result?.success) {
-                                // Wait for sync completion event
-                            } else {
-                                alert(result?.error || 'Failed to request sync');
+                            setLastSyncCount(null); // Clear previous count
+                            
+                            try {
+                                const result = await window.vaultAPI?.mobileSync.requestSync();
+                                if (!result?.success) {
+                                    alert(result?.error || 'Failed to request sync');
+                                    setIsSyncing(false);
+                                    return;
+                                }
+                                
+                                // Set timeout as fallback in case event doesn't fire
+                                syncTimeoutRef.current = setTimeout(() => {
+                                    console.warn('Sync timeout - resetting state');
+                                    setIsSyncing(false);
+                                    syncTimeoutRef.current = null;
+                                }, 30000); // 30 second timeout
+                            } catch (error) {
+                                console.error('Sync request error:', error);
+                                alert('Failed to request sync');
                                 setIsSyncing(false);
+                                if (syncTimeoutRef.current) {
+                                    clearTimeout(syncTimeoutRef.current);
+                                    syncTimeoutRef.current = null;
+                                }
                             }
                         }}
                         disabled={isSyncing}
                         style={{ 
                             minWidth: '120px',
                             opacity: isSyncing ? 0.6 : 1,
-                            cursor: isSyncing ? 'not-allowed' : 'pointer'
+                            cursor: isSyncing ? 'not-allowed' : 'pointer',
+                            pointerEvents: isSyncing ? 'none' : 'auto'
                         }}
                     >
                         {isSyncing ? (

@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { vaultService, VaultEntry } from '../services/vaultService';
+import { syncService } from '../services/syncService';
 
 interface SyncEntry {
   id: string;
@@ -73,8 +74,46 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUnlocked) {
       refreshEntries();
+      
+      // Register sync request handler globally when vault is unlocked
+      const handleSyncRequest = async () => {
+        console.log('Processing sync request from desktop...');
+        try {
+          const allEntries = await vaultService.getAllEntries();
+          console.log(`Fetched ${allEntries.length} entries from vault`);
+          
+          const syncEntries = allEntries.map(e => ({
+            id: e.id,
+            title: e.title,
+            username: e.username,
+            password: e.password,
+            url: e.url,
+            notes: e.notes,
+            totpSecret: e.totpSecret,
+            folderId: e.folderId,
+            isFavorite: e.isFavorite,
+            createdAt: e.createdAt,
+            modifiedAt: e.modifiedAt,
+          }));
+          
+          syncService.sendSyncResponse(syncEntries);
+          console.log(`Sent ${syncEntries.length} entries to desktop`);
+        } catch (error) {
+          console.error('Failed to fetch entries for sync:', error);
+          syncService.sendSyncResponse([]);
+        }
+      };
+      
+      syncService.setSyncRequestHandler(handleSyncRequest);
+      
+      return () => {
+        // Clear handler when vault is locked
+        syncService.setSyncRequestHandler(() => Promise.resolve());
+      };
     } else {
       setEntries([]);
+      // Clear handler when vault is locked
+      syncService.setSyncRequestHandler(() => Promise.resolve());
     }
   }, [isUnlocked, refreshEntries]);
 

@@ -86,6 +86,8 @@ class SyncService extends EventEmitter {
     private currentHost: string | null = null;
     private currentPort: number | null = null;
     private desktopInfo: { deviceId: string; deviceName: string } | null = null;
+    private syncRequestHandler: (() => Promise<void>) | null = null;
+    private isProcessingSyncRequest: boolean = false;
 
     constructor() {
         super();
@@ -325,7 +327,8 @@ class SyncService extends EventEmitter {
             case 'sync-request':
                 // Desktop is requesting entries from mobile
                 this.emit('sync-request-received');
-                // Response will be handled by the sync screen component
+                // Also handle directly if handler is registered
+                this.handleSyncRequestDirectly();
                 break;
 
             case 'sync-response':
@@ -358,9 +361,49 @@ class SyncService extends EventEmitter {
     }
 
     /**
+     * Register a handler for sync requests (called from sync screen)
+     */
+    setSyncRequestHandler(handler: () => Promise<void>): void {
+        this.syncRequestHandler = handler;
+    }
+
+    /**
+     * Handle sync request directly (if handler is registered)
+     */
+    private async handleSyncRequestDirectly(): Promise<void> {
+        // Prevent concurrent sync requests
+        if (this.isProcessingSyncRequest) {
+            console.log('Sync request already in progress, skipping...');
+            return;
+        }
+
+        if (!this.syncRequestHandler) {
+            console.log('No sync request handler registered');
+            return;
+        }
+
+        this.isProcessingSyncRequest = true;
+        try {
+            await this.syncRequestHandler();
+        } catch (error) {
+            console.error('Error in sync request handler:', error);
+            // Send empty response on error
+            this.sendSyncResponse([]);
+        } finally {
+            this.isProcessingSyncRequest = false;
+        }
+    }
+
+    /**
      * Send sync response to desktop (when desktop requests sync)
      */
     sendSyncResponse(entries: SyncEntry[]): void {
+        if (!this.isConnected()) {
+            console.error('Cannot send sync response - not connected');
+            return;
+        }
+        
+        console.log(`Sending sync response with ${entries.length} entries`);
         this.send({
             type: 'sync-response',
             payload: {
