@@ -54,6 +54,12 @@ function RootLayoutNav() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen
+          name="security"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
     </>
   );

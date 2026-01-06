@@ -24,7 +24,7 @@ import { EntryCard } from '../src/components/EntryCard';
 import { typography } from '../src/theme';
 import { VaultEntry } from '../src/services/vaultService';
 
-type TabType = 'all' | 'favorites';
+type TabType = 'all' | 'favorites' | 'security';
 
 export default function VaultScreen() {
   const { colors, toggleTheme, theme } = useTheme();
@@ -205,6 +205,20 @@ export default function VaultScreen() {
               </Text>
             </View>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab]}
+          onPress={() => router.push('/security')}
+        >
+          <Ionicons name="shield-outline" size={16} color={colors.textSecondary} />
+          <Text
+            style={[
+              styles.tabText,
+              { color: colors.textSecondary },
+            ]}
+          >
+            Security
+          </Text>
         </TouchableOpacity>
       </View>
 
