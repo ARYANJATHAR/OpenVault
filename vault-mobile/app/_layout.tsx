@@ -55,9 +55,10 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
-          name="security"
+          name="sync"
           options={{
-            animation: 'slide_from_right',
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack>

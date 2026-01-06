@@ -6,6 +6,20 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { vaultService, VaultEntry } from '../services/vaultService';
 
+interface SyncEntry {
+  id: string;
+  title: string;
+  username: string;
+  password: string;
+  url: string | null;
+  notes: string | null;
+  totpSecret: string | null;
+  folderId: string | null;
+  isFavorite: boolean;
+  createdAt: number;
+  modifiedAt: number;
+}
+
 interface VaultContextType {
   isUnlocked: boolean;
   isLoading: boolean;
@@ -19,6 +33,7 @@ interface VaultContextType {
   updateEntry: (id: string, updates: Partial<VaultEntry>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<boolean>;
+  importEntries: (entries: SyncEntry[]) => Promise<void>;
 }
 
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
@@ -110,6 +125,11 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     return newValue;
   };
 
+  const importEntries = async (entries: SyncEntry[]): Promise<void> => {
+    await vaultService.importEntries(entries);
+    await refreshEntries();
+  };
+
   return (
     <VaultContext.Provider
       value={{
@@ -125,6 +145,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         updateEntry,
         deleteEntry,
         toggleFavorite,
+        importEntries,
       }}
     >
       {children}

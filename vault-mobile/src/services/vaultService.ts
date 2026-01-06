@@ -336,6 +336,96 @@ class VaultService {
     );
   }
 
+  /**
+   * Import entries from desktop sync
+   * Merges with existing entries (upsert by ID)
+   */
+  async importEntries(entries: Array<{
+    id: string;
+    title: string;
+    username: string;
+    password: string;
+    url: string | null;
+    notes: string | null;
+    totpSecret: string | null;
+    folderId: string | null;
+    isFavorite: boolean;
+    createdAt: number;
+    modifiedAt: number;
+  }>): Promise<{ imported: number; updated: number }> {
+    this.ensureUnlocked();
+    const db = await this.getDatabase();
+
+    let imported = 0;
+    let updated = 0;
+
+    for (const entry of entries) {
+      try {
+        // Check if entry already exists
+        const existing = await db.getFirstAsync<{ id: string; modified_at: number }>(
+          'SELECT id, modified_at FROM entries WHERE id = ?',
+          [entry.id]
+        );
+
+        const encrypted = await this.encryptEntry(entry);
+
+        if (existing) {
+          // Update only if the incoming entry is newer
+          if (entry.modifiedAt > existing.modified_at) {
+            await db.runAsync(
+              `UPDATE entries SET 
+                title_encrypted = ?, username_encrypted = ?, password_encrypted = ?, 
+                url = ?, notes_encrypted = ?, totp_secret_encrypted = ?, 
+                folder_id = ?, modified_at = ?, sync_version = sync_version + 1, 
+                is_favorite = ?, is_deleted = 0, encryption_version = ?
+               WHERE id = ?`,
+              [
+                encrypted.title,
+                encrypted.username,
+                encrypted.password,
+                entry.url || null,
+                encrypted.notes,
+                encrypted.totpSecret,
+                entry.folderId || null,
+                entry.modifiedAt,
+                entry.isFavorite ? 1 : 0,
+                2,
+                entry.id,
+              ]
+            );
+            updated++;
+          }
+        } else {
+          // Insert new entry
+          await db.runAsync(
+            `INSERT INTO entries (id, title_encrypted, username_encrypted, password_encrypted, url, notes_encrypted, totp_secret_encrypted, folder_id, created_at, modified_at, sync_version, is_favorite, encryption_version) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry.id,
+              encrypted.title,
+              encrypted.username,
+              encrypted.password,
+              entry.url || null,
+              encrypted.notes,
+              encrypted.totpSecret,
+              entry.folderId || null,
+              entry.createdAt,
+              entry.modifiedAt,
+              0,
+              entry.isFavorite ? 1 : 0,
+              2,
+            ]
+          );
+          imported++;
+        }
+      } catch (error) {
+        console.error(`Failed to import entry ${entry.id}:`, error);
+      }
+    }
+
+    return { imported, updated };
+  }
+
   // Private helpers
   private ensureUnlocked(): void {
     if (!this.isUnlocked || !this.encryptionKey) {

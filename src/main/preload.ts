@@ -116,16 +116,30 @@ const api = {
             ipcRenderer.invoke('theme:set', theme),
     },
 
+    // Mobile Sync operations
+    mobileSync: {
+        getInfo: () =>
+            ipcRenderer.invoke('mobileSync:getInfo'),
+        getLocalIPs: () =>
+            ipcRenderer.invoke('mobileSync:getLocalIPs'),
+        isRunning: () =>
+            ipcRenderer.invoke('mobileSync:isRunning'),
+        getConnectedCount: () =>
+            ipcRenderer.invoke('mobileSync:getConnectedCount'),
+        requestSync: () =>
+            ipcRenderer.invoke('mobileSync:requestSync'),
+    },
+
     // Event listeners
     on: (channel: string, callback: (...args: any[]) => void) => {
-        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed'];
+        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed', 'mobile-sync-complete'];
         if (validChannels.includes(channel)) {
             ipcRenderer.on(channel, (_, ...args) => callback(...args));
         }
     },
 
     off: (channel: string, callback: (...args: any[]) => void) => {
-        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed'];
+        const validChannels = ['quick-search', 'vault-locked', 'entry-updated', 'theme-changed', 'mobile-sync-complete'];
         if (validChannels.includes(channel)) {
             ipcRenderer.removeListener(channel, callback);
         }

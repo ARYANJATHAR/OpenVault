@@ -1,4 +1,360 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { generateQRCodeSVG } from './qrcode';
+
+// Mobile Sync Panel Component
+const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntriesRefresh }) => {
+    const [syncInfo, setSyncInfo] = useState<{ ip: string; port: number; deviceId: string; deviceName: string } | null>(null);
+    const [allIPs, setAllIPs] = useState<string[]>([]);
+    const [isRunning, setIsRunning] = useState(false);
+    const [connectedCount, setConnectedCount] = useState(0);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSyncCount, setLastSyncCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        loadSyncInfo();
+        const interval = setInterval(loadSyncInfo, 3000); // Refresh every 3 seconds
+        
+        // Listen for sync completion
+        const handleSyncComplete = (data: { count: number }) => {
+            setLastSyncCount(data.count);
+            setIsSyncing(false);
+            onEntriesRefresh(); // Refresh entries list
+        };
+        
+        window.vaultAPI?.on('mobile-sync-complete', handleSyncComplete);
+        
+        return () => {
+            clearInterval(interval);
+            window.vaultAPI?.off('mobile-sync-complete', handleSyncComplete);
+        };
+    }, [onEntriesRefresh]);
+
+    const loadSyncInfo = async () => {
+        try {
+            const info = await window.vaultAPI?.mobileSync.getInfo();
+            const ips = await window.vaultAPI?.mobileSync.getLocalIPs();
+            const running = await window.vaultAPI?.mobileSync.isRunning();
+            const connected = await window.vaultAPI?.mobileSync.getConnectedCount();
+            
+            setSyncInfo(info);
+            setAllIPs(ips || []);
+            setIsRunning(running || false);
+            setConnectedCount(connected || 0);
+        } catch (error) {
+            console.error('Failed to load sync info:', error);
+        }
+    };
+
+    // Generate QR code data - use compact format for reliable scanning
+    const qrData = useMemo(() => {
+        if (!syncInfo) return '';
+        // Use simple IP:PORT format for maximum compatibility
+        return `${syncInfo.ip}:${syncInfo.port}`;
+    }, [syncInfo]);
+
+    // Generate QR code SVG
+    const qrCodeSVG = useMemo(() => {
+        if (!qrData) return '';
+        try {
+            return generateQRCodeSVG(qrData, 184);
+        } catch (error) {
+            console.error('Failed to generate QR code:', error);
+            return '';
+        }
+    }, [qrData]);
+
+    return (
+        <div style={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
+            <header className="content-header" style={{ marginBottom: '24px' }}>
+                <h2>Mobile Sync</h2>
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    fontSize: '12px',
+                    color: isRunning ? '#2ecc71' : '#e74c3c'
+                }}>
+                    <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: isRunning ? '#2ecc71' : '#e74c3c',
+                    }} />
+                    {isRunning ? 'Server Running' : 'Server Stopped'}
+                </div>
+            </header>
+
+            {/* Connection Status */}
+            <div style={{ 
+                background: 'var(--bg-surface)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '8px', 
+                padding: '20px', 
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                    <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: connectedCount > 0 ? 'rgba(46, 204, 113, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={connectedCount > 0 ? '#2ecc71' : 'var(--text-muted)'} strokeWidth="1.5">
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                            <line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '16px', fontWeight: '500' }}>
+                            {connectedCount} Device{connectedCount !== 1 ? 's' : ''} Connected
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            {connectedCount > 0 ? 'Sync active' : 'No mobile devices connected'}
+                            {lastSyncCount !== null && ` • Last sync: ${lastSyncCount} password${lastSyncCount !== 1 ? 's' : ''}`}
+                        </div>
+                    </div>
+                </div>
+                {connectedCount > 0 && (
+                    <button
+                        className="add-button"
+                        onClick={async () => {
+                            setIsSyncing(true);
+                            const result = await window.vaultAPI?.mobileSync.requestSync();
+                            if (result?.success) {
+                                // Wait for sync completion event
+                            } else {
+                                alert(result?.error || 'Failed to request sync');
+                                setIsSyncing(false);
+                            }
+                        }}
+                        disabled={isSyncing}
+                        style={{ 
+                            minWidth: '120px',
+                            opacity: isSyncing ? 0.6 : 1,
+                            cursor: isSyncing ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isSyncing ? (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+                                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                </svg>
+                                Syncing...
+                            </>
+                        ) : (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                                </svg>
+                                Refresh from Mobile
+                            </>
+                        )}
+                    </button>
+                )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* QR Code Section */}
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '24px',
+                    textAlign: 'center'
+                }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: '500', marginBottom: '16px' }}>
+                        Scan QR Code
+                    </h3>
+                    
+                    {/* QR Code Display */}
+                    <div style={{
+                        width: '200px',
+                        height: '200px',
+                        margin: '0 auto 16px',
+                        background: '#fff',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        {qrCodeSVG ? (
+                            <div dangerouslySetInnerHTML={{ __html: qrCodeSVG }} />
+                        ) : (
+                            <div style={{ color: '#666', fontSize: '12px' }}>Loading...</div>
+                        )}
+                    </div>
+                    
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        Open Vault app on your phone and scan this code
+                    </p>
+                </div>
+
+                {/* Manual Connection Section */}
+                <div style={{ 
+                    background: 'var(--bg-surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    padding: '24px'
+                }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: '500', marginBottom: '16px' }}>
+                        Manual Connection
+                    </h3>
+                    
+                    <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                            IP Address{allIPs.length > 1 ? 'es' : ''}
+                        </div>
+                        {allIPs.map((ip, index) => (
+                            <div 
+                                key={index}
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    padding: '10px 12px',
+                                    background: 'var(--bg-base)',
+                                    borderRadius: '6px',
+                                    marginBottom: '8px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <span>{ip}</span>
+                                <button 
+                                    className="copy-pill"
+                                    onClick={() => navigator.clipboard.writeText(ip)}
+                                    style={{ fontSize: '11px', padding: '4px 10px' }}
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                            Port
+                        </div>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            padding: '10px 12px',
+                            background: 'var(--bg-base)',
+                            borderRadius: '6px',
+                            fontFamily: 'monospace',
+                            fontSize: '14px'
+                        }}>
+                            <span>{syncInfo?.port || '51820'}</span>
+                            <button 
+                                className="copy-pill"
+                                onClick={() => navigator.clipboard.writeText(String(syncInfo?.port || '51820'))}
+                                style={{ fontSize: '11px', padding: '4px 10px' }}
+                            >
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{ 
+                        padding: '12px', 
+                        background: 'rgba(46, 204, 113, 0.1)', 
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: 'var(--text-secondary)'
+                    }}>
+                        <strong style={{ color: 'var(--accent)' }}>📱 Instructions:</strong>
+                        <ol style={{ margin: '8px 0 0 16px', padding: 0 }}>
+                            <li>Open Vault on your phone</li>
+                            <li>Go to Sync tab</li>
+                            <li>Enter IP address and port</li>
+                            <li>Tap Connect</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            {/* Info Section */}
+            <div style={{ 
+                marginTop: '20px',
+                padding: '16px',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: 'var(--text-muted)'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <strong>Note:</strong>
+                </div>
+                <p style={{ margin: 0 }}>
+                    Both devices must be on the same Wi-Fi network. No internet connection is required - 
+                    all data stays on your local network. Your passwords are encrypted during transfer.
+                </p>
+            </div>
+
+            {/* Hotspot Mode Section */}
+            <div style={{ 
+                marginTop: '16px',
+                padding: '16px',
+                background: 'linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%)',
+                border: '1px solid rgba(46, 204, 113, 0.3)',
+                borderRadius: '8px',
+                fontSize: '12px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" strokeWidth="1.5">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                        <circle cx="12" cy="20" r="1" fill="#2ecc71" />
+                    </svg>
+                    <strong style={{ color: 'var(--text-primary)' }}>📱 No Router? Use Hotspot Mode!</strong>
+                </div>
+                <p style={{ margin: '0 0 12px 0', color: 'var(--text-secondary)' }}>
+                    If both devices aren't on the same Wi-Fi, you can create a direct connection:
+                </p>
+                <ol style={{ margin: '0', paddingLeft: '20px', color: 'var(--text-secondary)', lineHeight: '1.8' }}>
+                    <li><strong>On your phone:</strong> Enable "Mobile Hotspot" in settings</li>
+                    <li><strong>On this computer:</strong> Connect to your phone's hotspot Wi-Fi</li>
+                    <li>Wait for connection, then use the IP addresses shown above</li>
+                    <li>The first IP that starts with <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>192.168.43.x</code> usually works for hotspots</li>
+                </ol>
+                <div style={{ 
+                    marginTop: '12px', 
+                    padding: '8px 12px', 
+                    background: 'rgba(0,0,0,0.2)', 
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f39c12" strokeWidth="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                        Mobile data will be used for internet while hotspot is active on your phone
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Security Dashboard Component
 const SecurityDashboard: React.FC<{ audit: any; entries: Entry[]; onRefresh: () => void }> = ({ audit, entries, onRefresh }) => {
@@ -249,6 +605,12 @@ declare global {
             security: {
                 audit: () => Promise<{ totalIssues: number; critical: number; high: number; medium: number; low: number; issues: any[]; securityScore: number }>;
             };
+            mobileSync: {
+                getInfo: () => Promise<{ ip: string; port: number; deviceId: string; deviceName: string }>;
+                getLocalIPs: () => Promise<string[]>;
+                isRunning: () => Promise<boolean>;
+                getConnectedCount: () => Promise<number>;
+            };
             app: {
                 getVersion: () => Promise<string>;
                 getPlatform: () => Promise<string>;
@@ -279,7 +641,7 @@ interface Entry {
     isFavorite: boolean;
 }
 
-type View = 'unlock' | 'create' | 'vault' | 'settings';
+type View = 'unlock' | 'create' | 'vault' | 'settings' | 'mobilesync';
 
 const App: React.FC = () => {
     const [view, setView] = useState<View>('unlock');
@@ -293,7 +655,7 @@ const App: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [showFavorites, setShowFavorites] = useState(false);
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-    const [currentView, setCurrentView] = useState<'vault' | 'security'>('vault');
+    const [currentView, setCurrentView] = useState<'vault' | 'security' | 'mobilesync'>('vault');
     const [totpCodes, setTotpCodes] = useState<Map<string, { code: string; timeRemaining: number }>>(new Map());
     const [passwordStrength, setPasswordStrength] = useState<{ score: number; level: string; feedback: string[] } | null>(null);
     const [securityAudit, setSecurityAudit] = useState<any>(null);
@@ -662,6 +1024,19 @@ const App: React.FC = () => {
                             </span>
                         )}
                     </button>
+                    <button 
+                        className={`nav-item ${currentView === 'mobilesync' ? 'active' : ''}`}
+                        onClick={() => {
+                            setCurrentView('mobilesync');
+                            setShowFavorites(false);
+                        }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                            <line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" />
+                        </svg>
+                        Mobile Sync
+                    </button>
                 </nav>
                 <div className="sidebar-footer">
                     <button 
@@ -692,6 +1067,8 @@ const App: React.FC = () => {
             <main className="main-content">
                 {currentView === 'security' ? (
                     <SecurityDashboard audit={securityAudit} entries={entries} onRefresh={loadSecurityAudit} />
+                ) : currentView === 'mobilesync' ? (
+                    <MobileSyncPanel onEntriesRefresh={loadEntries} />
                 ) : (
                     <>
                         <header className="content-header">
