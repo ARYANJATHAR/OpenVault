@@ -491,18 +491,17 @@ h3,
 .form-group .password-toggle-btn {
     position: absolute;
     right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 0;
+    bottom: 0;
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 32px;
     transition: color 0.2s;
 }
 

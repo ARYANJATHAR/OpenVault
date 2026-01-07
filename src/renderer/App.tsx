@@ -9,6 +9,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
     const [connectedCount, setConnectedCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncCount, setLastSyncCount] = useState<number | null>(null);
+    const [qrCodeSVG, setQrCodeSVG] = useState<string>('');
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -65,19 +66,28 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
     // Generate QR code data - use compact format for reliable scanning
     const qrData = useMemo(() => {
         if (!syncInfo) return '';
-        // Use simple IP:PORT format for maximum compatibility
-        return `${syncInfo.ip}:${syncInfo.port}`;
+        // Encode full connection info as JSON so mobile can read ip, port and metadata
+        return JSON.stringify({
+            ip: syncInfo.ip,
+            port: syncInfo.port,
+            deviceId: syncInfo.deviceId,
+            name: syncInfo.deviceName,
+        });
     }, [syncInfo]);
 
-    // Generate QR code SVG
-    const qrCodeSVG = useMemo(() => {
-        if (!qrData) return '';
-        try {
-            return generateQRCodeSVG(qrData, 184);
-        } catch (error) {
-            console.error('Failed to generate QR code:', error);
-            return '';
+    // Generate QR code SVG (async)
+    useEffect(() => {
+        if (!qrData) {
+            setQrCodeSVG('');
+            return;
         }
+        
+        generateQRCodeSVG(qrData, 184)
+            .then(svg => setQrCodeSVG(svg))
+            .catch(error => {
+                console.error('Failed to generate QR code:', error);
+                setQrCodeSVG('');
+            });
     }, [qrData]);
 
     return (
@@ -297,10 +307,10 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                             fontFamily: 'monospace',
                             fontSize: '14px'
                         }}>
-                            <span>{syncInfo?.port || '51820'}</span>
+                            <span>{syncInfo?.port || '51821'}</span>
                             <button 
                                 className="copy-pill"
-                                onClick={() => navigator.clipboard.writeText(String(syncInfo?.port || '51820'))}
+                                onClick={() => navigator.clipboard.writeText(String(syncInfo?.port || '51821'))}
                                 style={{ fontSize: '11px', padding: '4px 10px' }}
                             >
                                 Copy
@@ -401,7 +411,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
 };
 
 // Security Dashboard Component
-const SecurityDashboard: React.FC<{ audit: any; entries: Entry[]; onRefresh: () => void }> = ({ audit, entries, onRefresh }) => {
+const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ audit, onRefresh }) => {
     if (!audit) {
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -654,6 +664,7 @@ declare global {
                 getLocalIPs: () => Promise<string[]>;
                 isRunning: () => Promise<boolean>;
                 getConnectedCount: () => Promise<number>;
+                requestSync: () => Promise<{ success: boolean; error?: string }>;
             };
             app: {
                 getVersion: () => Promise<string>;
@@ -705,6 +716,8 @@ const App: React.FC = () => {
     const [securityAudit, setSecurityAudit] = useState<any>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showEditPassword, setShowEditPassword] = useState(false);
+    const [isGeneratingNewPassword, setIsGeneratingNewPassword] = useState(false);
+    const [isGeneratingEditPassword, setIsGeneratingEditPassword] = useState(false);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editDraft, setEditDraft] = useState({
@@ -863,6 +876,44 @@ const App: React.FC = () => {
         setIsEditing(false);
     };
 
+    const handleGeneratePasswordForNew = async () => {
+        if (isGeneratingNewPassword) return;
+        setIsGeneratingNewPassword(true);
+        try {
+            const generated = await window.vaultAPI?.password.generate({
+                length: 20,
+                uppercase: true,
+                lowercase: true,
+                numbers: true,
+                symbols: true,
+            });
+            if (generated) {
+                setNewEntry(prev => ({ ...prev, password: generated }));
+            }
+        } finally {
+            setIsGeneratingNewPassword(false);
+        }
+    };
+
+    const handleGeneratePasswordForEdit = async () => {
+        if (isGeneratingEditPassword) return;
+        setIsGeneratingEditPassword(true);
+        try {
+            const generated = await window.vaultAPI?.password.generate({
+                length: 20,
+                uppercase: true,
+                lowercase: true,
+                numbers: true,
+                symbols: true,
+            });
+            if (generated) {
+                setEditDraft(prev => ({ ...prev, password: generated }));
+            }
+        } finally {
+            setIsGeneratingEditPassword(false);
+        }
+    };
+
     const deleteSelected = async () => {
         if (!selectedEntry) return;
 
@@ -906,11 +957,15 @@ const App: React.FC = () => {
         e.preventDefault();
         const url = newEntry.url.trim();
         await window.vaultAPI?.entries.add({
-            ...newEntry,
-            url: url.length > 0 ? url : undefined,
-            totpSecret: newEntry.totpSecret.length > 0 ? newEntry.totpSecret : undefined,
+            title: newEntry.title,
+            username: newEntry.username,
+            password: newEntry.password,
+            url: url.length > 0 ? url : null,
+            notes: newEntry.notes.length > 0 ? newEntry.notes : null,
+            totpSecret: newEntry.totpSecret.length > 0 ? newEntry.totpSecret : null,
             folderId: null,
-            lastUsedAt: null
+            lastUsedAt: null,
+            isFavorite: false,
         });
         await loadEntries();
         setIsAddModalOpen(false);
@@ -1110,7 +1165,7 @@ const App: React.FC = () => {
 
             <main className="main-content">
                 {currentView === 'security' ? (
-                    <SecurityDashboard audit={securityAudit} entries={entries} onRefresh={loadSecurityAudit} />
+                    <SecurityDashboard audit={securityAudit} onRefresh={loadSecurityAudit} />
                 ) : currentView === 'mobilesync' ? (
                     <MobileSyncPanel onEntriesRefresh={loadEntries} />
                 ) : (
@@ -1278,7 +1333,7 @@ const App: React.FC = () => {
                                                     className="copy-pill" 
                                                     onClick={async () => {
                                                         try {
-                                                            const result = await window.vaultAPI?.totp.generate(selectedEntry.totpSecret);
+                                                            const result = await window.vaultAPI?.totp.generate(selectedEntry.totpSecret!);
                                                             if (result?.success) {
                                                                 alert(`Test code: ${result.code}\n\nIf this works, the secret is valid!`);
                                                             } else {
@@ -1315,26 +1370,21 @@ const App: React.FC = () => {
                             <div className="form-group" style={{ marginTop: 8 }}>
                                 <label>Service</label>
                                 <input
+                                    placeholder="e.g., Google, GitHub"
                                     value={editDraft.title}
                                     onChange={e => setEditDraft({ ...editDraft, title: e.target.value })}
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Website (optional)</label>
+                                <label>Username / Email</label>
                                 <input
-                                    value={editDraft.url}
-                                    onChange={e => setEditDraft({ ...editDraft, url: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Identifier</label>
-                                <input
+                                    placeholder="Email or username"
                                     value={editDraft.username}
                                     onChange={e => setEditDraft({ ...editDraft, username: e.target.value })}
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Secret</label>
+                                <label>Password</label>
                                 <div className="password-input-wrapper">
                                     <input
                                         type={showEditPassword ? "text" : "password"}
@@ -1360,6 +1410,15 @@ const App: React.FC = () => {
                                         )}
                                     </button>
                                 </div>
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    onClick={handleGeneratePasswordForEdit}
+                                    disabled={isGeneratingEditPassword}
+                                    style={{ marginTop: '8px', fontSize: '12px' }}
+                                >
+                                    {isGeneratingEditPassword ? 'Generating...' : 'Generate Password'}
+                                </button>
                                 {passwordStrength && (
                                     <div style={{ marginTop: '8px' }}>
                                         <div style={{ 
@@ -1404,6 +1463,14 @@ const App: React.FC = () => {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                            <div className="form-group">
+                                <label>Website (optional)</label>
+                                <input
+                                    placeholder="https://example.com"
+                                    value={editDraft.url}
+                                    onChange={e => setEditDraft({ ...editDraft, url: e.target.value })}
+                                />
                             </div>
                             <div className="form-group">
                                 <label>2FA Secret (optional)</label>
@@ -1427,6 +1494,7 @@ const App: React.FC = () => {
                             <div className="form-group">
                                 <label>Notes (optional)</label>
                                 <input
+                                    placeholder="Additional notes..."
                                     value={editDraft.notes}
                                     onChange={e => setEditDraft({ ...editDraft, notes: e.target.value })}
                                 />
@@ -1446,22 +1514,14 @@ const App: React.FC = () => {
                             <div className="form-group">
                                 <label>Service</label>
                                 <input
-                                    placeholder="Title"
+                                    placeholder="e.g., Google, GitHub, Netflix"
                                     value={newEntry.title}
                                     onChange={e => setNewEntry({ ...newEntry, title: e.target.value })}
                                     required
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Website (optional)</label>
-                                <input
-                                    placeholder="https://example.com"
-                                    value={newEntry.url}
-                                    onChange={e => setNewEntry({ ...newEntry, url: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Identifier</label>
+                                <label>Username / Email</label>
                                 <input
                                     placeholder="Username / Email"
                                     value={newEntry.username}
@@ -1470,11 +1530,11 @@ const App: React.FC = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Secret</label>
+                                <label>Password</label>
                                 <div className="password-input-wrapper">
                                     <input
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="Password"
+                                        placeholder="Enter or generate password"
                                         value={newEntry.password}
                                         onChange={e => setNewEntry({ ...newEntry, password: e.target.value })}
                                         required
@@ -1498,6 +1558,15 @@ const App: React.FC = () => {
                                         )}
                                     </button>
                                 </div>
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    onClick={handleGeneratePasswordForNew}
+                                    disabled={isGeneratingNewPassword}
+                                    style={{ marginTop: '8px', fontSize: '12px' }}
+                                >
+                                    {isGeneratingNewPassword ? 'Generating...' : 'Generate Password'}
+                                </button>
                                 {passwordStrength && (
                                     <div style={{ marginTop: '8px' }}>
                                         <div style={{ 
@@ -1544,6 +1613,14 @@ const App: React.FC = () => {
                                 )}
                             </div>
                             <div className="form-group">
+                                <label>Website (optional)</label>
+                                <input
+                                    placeholder="https://example.com"
+                                    value={newEntry.url}
+                                    onChange={e => setNewEntry({ ...newEntry, url: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
                                 <label>2FA Secret (optional)</label>
                                 <input
                                     type="text"
@@ -1561,6 +1638,14 @@ const App: React.FC = () => {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                            <div className="form-group">
+                                <label>Notes (optional)</label>
+                                <input
+                                    placeholder="Additional notes..."
+                                    value={newEntry.notes}
+                                    onChange={e => setNewEntry({ ...newEntry, notes: e.target.value })}
+                                />
                             </div>
                             <div className="form-actions" style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                                 <button type="button" className="btn-ghost" onClick={() => setIsAddModalOpen(false)}>Back</button>
