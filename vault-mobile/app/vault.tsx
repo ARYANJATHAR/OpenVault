@@ -85,6 +85,11 @@ export default function VaultScreen() {
     router.push('/sync');
   };
 
+  const handleSecurity = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/security');
+  };
+
   const handleEntryPress = (entry: VaultEntry) => {
     router.push(`/entry/${entry.id}`);
   };
@@ -118,6 +123,12 @@ export default function VaultScreen() {
           </View>
         </View>
         <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: colors.bgSurface }]}
+            onPress={handleSecurity}
+          >
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: colors.bgSurface }]}
             onPress={handleSync}
