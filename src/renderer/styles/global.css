@@ -118,6 +118,12 @@ h3,
     color: var(--accent);
 }
 
+.brand-img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+}
+
 .search-container {
     padding: 0 16px 20px;
 }
@@ -558,6 +564,12 @@ h3,
 .vault-logo {
     color: var(--accent);
     margin-bottom: 24px;
+}
+
+.logo-img {
+    height: 120px;
+    width: auto;
+    object-fit: contain;
 }
 
 .primary-button {

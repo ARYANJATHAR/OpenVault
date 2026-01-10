@@ -42,7 +42,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
         minWidth: 800,
         minHeight: 600,
         title: APP_NAME,
-        icon: path.join(__dirname, '../../assets/icon.png'),
+        icon: path.join(__dirname, '../../../assets/icon.png'),
         show: false, // Show when ready
         backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a2e' : '#ffffff',
         webPreferences: {
@@ -154,7 +154,7 @@ app.whenReady().then(async () => {
         // Start mobile WebSocket server for mobile app sync
         try {
             await mobileWSServer.start();
-            
+
             // Handle sync messages from mobile
             mobileWSServer.on('message', async (message, connId) => {
                 await handleMobileSyncMessage(message, connId);
@@ -214,7 +214,7 @@ app.on('before-quit', () => {
 
 // Vault operations
 ipcMain.handle('vault:create', async (_, options: { path: string; password: string }) => {
-    const { deriveMasterKey, deriveKeys, createVaultHeader, hashMasterKey } = await import('../core/crypto');
+    const { deriveMasterKey, deriveKeys, createVaultHeader } = await import('../core/crypto');
 
     const header = createVaultHeader();
     const masterKey = await deriveMasterKey(options.password, header.salt);
@@ -480,7 +480,7 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                 type: 'entry-added',
                 payload: { id: newId }
             }, connId);
-            
+
             // Notify renderer to refresh
             mainWindow?.webContents.send('entry-updated');
             break;
@@ -500,7 +500,7 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                 type: 'entry-updated',
                 payload: { id: message.payload.id }
             }, connId);
-            
+
             mainWindow?.webContents.send('entry-updated');
             break;
 
@@ -519,7 +519,7 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                 type: 'entry-deleted',
                 payload: { id: message.payload.id }
             }, connId);
-            
+
             mainWindow?.webContents.send('entry-updated');
             break;
 
@@ -553,7 +553,7 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                                     totpSecret: entry.totpSecret,
                                     folderId: entry.folderId,
                                 });
-                                
+
                                 // Update favorite status if different
                                 if (entry.isFavorite !== existing.isFavorite) {
                                     // Toggle favorite to match mobile status
@@ -589,12 +589,12 @@ async function handleMobileSyncMessage(message: any, connId: string) {
                         console.error(`Failed to import entry ${entry.id}:`, error);
                     }
                 }
-                
+
                 console.log(`Sync complete: ${importedCount} imported, ${updatedCount} updated, ${skippedCount} skipped`);
-                
+
                 // Notify renderer to refresh
                 mainWindow?.webContents.send('entry-updated');
-                mainWindow?.webContents.send('mobile-sync-complete', { 
+                mainWindow?.webContents.send('mobile-sync-complete', {
                     count: importedCount + updatedCount,
                     imported: importedCount,
                     updated: updatedCount,

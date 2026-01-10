@@ -73,6 +73,12 @@ body {
     color: var(--accent);
 }
 
+.brand-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
 .icon-btn {
     width: 36px;
     height: 36px;
@@ -139,6 +145,13 @@ body {
     justify-content: center;
     padding: 40px 20px;
     text-align: center;
+}
+
+.locked-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    margin-bottom: 8px;
 }
 
 .state-container h2 {

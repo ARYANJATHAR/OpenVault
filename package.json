@@ -60,11 +60,13 @@
     "appId": "com.vault.pm",
     "productName": "Vault",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "icon": "assets/icon.png",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
+      "assets/**/*",
       "package.json",
       "!**/*.map",
       "!**/*.test.js",
@@ -79,6 +81,7 @@
     ],
     "compression": "maximum",
     "win": {
+      "icon": "assets/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -94,9 +97,11 @@
       "deleteAppDataOnUninstall": true
     },
     "mac": {
+      "icon": "assets/icon.png",
       "target": "dmg"
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": "AppImage"
     },
     "extraResources": [],

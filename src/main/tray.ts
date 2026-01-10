@@ -5,7 +5,7 @@
  * Allows quick access to vault functions without opening the main window.
  */
 
-import { Tray, Menu, nativeImage, app } from 'electron';
+import { Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
 
 let tray: Tray | null = null;
@@ -18,7 +18,7 @@ export function createTray(
     onQuit: () => void
 ): Tray {
     // Create tray icon
-    const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
+    const iconPath = path.join(__dirname, '../../../assets/tray-icon.png');
 
     // Create a simple icon if the file doesn't exist
     let icon = nativeImage.createEmpty();

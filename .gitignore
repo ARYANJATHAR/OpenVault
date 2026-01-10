@@ -10,6 +10,7 @@ out/
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
+!src/**/vite-env.d.ts
 src/**/*.d.ts.map
 extension/**/*.js
 extension/**/*.js.map

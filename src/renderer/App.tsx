@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateQRCodeSVG } from './qrcode';
+import logo from './assets/logo.png';
 
 // Mobile Sync Panel Component
 const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntriesRefresh }) => {
@@ -1018,10 +1019,7 @@ const App: React.FC = () => {
             <div className="unlock-screen">
                 <div className="unlock-box">
                     <div className="vault-logo">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
+                        <img src={logo} alt="Vault" className="logo-img" />
                     </div>
                     <h1>{isCreate ? 'Create Your Vault' : 'Welcome'}</h1>
                     <p className="entry-subtext" style={{ marginBottom: '32px' }}>
@@ -1132,10 +1130,7 @@ const App: React.FC = () => {
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="brand">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
+                        <img src={logo} alt="" className="brand-img" />
                         <span>Vault</span>
                     </div>
                 </div>
