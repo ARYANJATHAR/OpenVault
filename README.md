@@ -1,83 +1,77 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android%20%7C%20iOS-blue?style=for-the-badge" alt="Platforms"/>
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platforms"/>
+  <img src="https://img.shields.io/badge/License-GPL--3.0-green?style=for-the-badge" alt="License"/>
   <img src="https://img.shields.io/badge/Encryption-AES--256--GCM-red?style=for-the-badge" alt="Encryption"/>
 </p>
 
-<h1 align="center">🔐 OpenVault</h1>
+<h1 align="center">OpenVault</h1>
 
 <p align="center">
-  <strong>A fully local, zero-internet, open-source password manager</strong>
+  <strong>A fully local, open-source password manager</strong>
 </p>
 
 <p align="center">
   Your passwords never leave your device. No cloud. No servers. No subscriptions.<br/>
-  <em>Complete privacy with military-grade AES-256-GCM encryption.</em>
+  Complete privacy with AES-256-GCM encryption.
 </p>
 
 ---
 
-## 📖 What is OpenVault?
+## What is OpenVault?
 
-**OpenVault** is an open-source, offline-first password manager designed for users who prioritize **privacy** and **security** above all else. Unlike cloud-based password managers, OpenVault stores all your sensitive data **locally on your device**—encrypted with industry-standard AES-256-GCM encryption.
+OpenVault is an open-source password manager built on a simple principle: your passwords belong on your device, not on someone else's server. Everything stays local and encrypted using industry-standard AES-256-GCM encryption.
 
-### Why OpenVault?
+I built this because I was tired of trusting cloud services with my most sensitive data. OpenVault doesn't phone home, doesn't collect telemetry, and doesn't require an internet connection. It's just a secure vault that lives on your device.
 
-| Feature | OpenVault | Cloud-Based Managers |
-|---------|-----------|---------------------|
-| 🔒 **Data Storage** | 100% Local | Cloud Servers |
-| 🌐 **Internet Required** | ❌ Never | ✅ Always |
-| 💰 **Subscription** | Free Forever | Monthly/Yearly |
-| 🕵️ **Privacy** | Complete | Trust-Based |
-| 🔄 **Sync** | LAN Only (Optional) | Cloud Sync |
-| 📱 **Cross-Platform** | ✅ Desktop, Mobile, Browser | ✅ |
+### Why Choose OpenVault?
 
-### Key Highlights
+**Complete Privacy**: Your data never touches the internet unless you explicitly choose to sync between your own devices over your local network.
 
-- **🔐 Military-Grade Encryption**: AES-256-GCM with Argon2id key derivation
-- **📴 100% Offline**: No internet connection required, ever
-- **🚫 Zero Telemetry**: No data collection, no tracking, no analytics
-- **📱 Cross-Platform**: Desktop (Windows/macOS/Linux), Mobile (Android/iOS), Browser Extension
-- **🔄 LAN Sync**: Securely sync between devices on your local network (no cloud)
-- **🛡️ Security Audit**: Built-in security dashboard to identify weak/reused passwords
-- **⏱️ TOTP Support**: Generate 2FA codes directly in the app
-- **⌨️ Browser Autofill**: Seamless autofill with Chrome/Edge/Firefox extension
+**No Subscriptions**: This isn't a service, it's software. Download it, use it forever, no payment required.
 
----
+**Transparent Security**: The code is open source. You can audit exactly how your passwords are encrypted and stored. No black boxes, no "trust us."
 
-## 📦 Components
+**Full Control**: You own your data. Export it, backup it, move it. The vault file is just a SQLite database on your disk.
 
-OpenVault consists of three components that work together:
+### Core Features
 
-| Component | Description | Required? |
-|-----------|-------------|-----------|
-| **🖥️ Desktop App** | Main vault application (Electron) | ✅ Required |
-| **📱 Mobile App** | Companion mobile app (React Native) | ⭕ Optional |
-| **🌐 Browser Extension** | Autofill extension for browsers | ⭕ Optional |
+- AES-256-GCM encryption with Argon2id key derivation
+- Completely offline operation
+- Windows desktop application and Android mobile app
+- Browser extension for autofill (Chromium-based browsers)
+- Optional LAN sync between your devices
+- Built-in password strength analysis and security audit
+- TOTP two-factor authentication code generation
+- No telemetry or data collection of any kind
 
 ---
 
-## 📥 Installation Guide
+## Components
 
-### 🖥️ Desktop Application
+OpenVault has three parts that work together:
 
-The desktop app is the core of OpenVault. It stores your encrypted vault and provides the main interface for managing passwords.
+**Desktop Application (Windows)**: The main vault where all your passwords are stored and encrypted. This is the core component.
 
-#### Option 1: Download Pre-Built Installer (Recommended)
+**Mobile App (Android)**: Companion app for accessing your passwords on your phone. Can sync with the desktop app over your local network.
 
-1. Go to the [**Releases**](../../releases) page
-2. Download the installer for your operating system:
-   
-   | OS | File | Notes |
-   |----|------|-------|
-   | **Windows** | `OpenVault-Setup-x.x.x.exe` | Run the installer |
-   | **macOS** | `OpenVault-x.x.x.dmg` | Drag to Applications |
-   | **Linux** | `OpenVault-x.x.x.AppImage` | Make executable & run |
+**Browser Extension**: Autofill extension for Chrome, Edge, Brave, and other Chromium browsers. Communicates with the desktop app to fill login forms.
 
-3. Launch the application
-4. Create your master password and start adding entries!
+---
 
-#### Option 2: Build from Source
+## Installation
+
+### Desktop Application (Windows)
+
+The desktop application is the core of OpenVault. This is where your encrypted vault lives and where you'll manage all your passwords.
+
+**Download the Pre-Built Installer:**
+
+1. Go to the [Releases](../../releases) page
+2. Download `PasswordManager-v1.0.0-windows.exe` for Windows
+3. Run the installer
+4. Launch OpenVault and create your master password
+
+**Build from Source:**
 
 ```bash
 # Clone the repository
@@ -87,337 +81,212 @@ cd OpenVault
 # Install dependencies
 npm install
 
-# Build the application
-npm run build
-
-# Run in development mode
+# Run in development
 npm run dev
 
-# OR package for distribution
+# Build for production
+npm run build
+
+# Package installer
 npm run package
 ```
 
-The packaged installer will be available in the `release/` directory.
+The installer will be in the `release/` directory.
 
 ---
 
-### 📱 Mobile Application
+### Mobile Application (Android)
 
-The mobile app provides secure password access on your Android or iOS device.
+The mobile app lets you access your passwords on your Android device. It can sync with your desktop vault over your local network.
 
-#### Option 1: Download Pre-Built APK/IPA
+**Install the APK:**
 
-##### Android
+1. Download `PasswordManager-v1.0.0-android.apk` from the [Releases](../../releases) page
+2. On your Android device, go to **Settings → Security → Unknown Sources** and enable installation from unknown sources
+3. Open the APK file and install
+4. Launch OpenVault
 
-1. Go to the [**Releases**](../../releases) page
-2. Download `OpenVault-x.x.x.apk`
-3. On your Android device:
-   - Go to **Settings** → **Security** → Enable **Install from Unknown Sources**
-   - Open the downloaded APK file
-   - Tap **Install**
-   - Launch OpenVault from your app drawer
-
-##### iOS
-
-1. Go to the [**Releases**](../../releases) page
-2. Download `OpenVault-x.x.x.ipa`
-3. Install using one of these methods:
-   - **AltStore**: Use AltStore to sideload the IPA
-   - **TestFlight**: Join our TestFlight beta (link in releases)
-   - **Xcode**: Install via Xcode with a developer account
-
-#### Option 2: Build from Source
+**Build from Source:**
 
 ```bash
-# Navigate to mobile directory
 cd vault-mobile
 
 # Install dependencies
 npm install
 
-# Start Expo development server
+# Start development server
 npx expo start
 
-# Build for Android
-npx expo run:android
-# OR build APK
+# Build APK for Android
 eas build --platform android --profile preview
-
-# Build for iOS
-npx expo run:ios
-# OR build IPA
-eas build --platform ios --profile preview
 ```
 
 ---
 
-### 🌐 Browser Extension
+### Browser Extension
 
-The browser extension enables seamless autofill on websites. It communicates with the desktop app to securely fill login forms.
+The browser extension enables password autofill on websites. It works with Chrome, Edge, Brave, and other Chromium-based browsers.
 
-> ⚠️ **Note**: The browser extension requires the desktop app to be running.
+**Important:** The desktop app must be running for the extension to work.
 
-#### Supported Browsers
+**Installation:**
+**From Source:**
 
-- ✅ Google Chrome
-- ✅ Microsoft Edge
-- ✅ Brave Browser
-- ✅ Opera
-- ✅ Any Chromium-based browser
-- 🔜 Firefox (coming soon)
-
-#### Installation (Load Unpacked - Development)
-
-Since this is an open-source project, you'll need to load the extension manually:
-
-##### Step 1: Get the Extension Files
-
-**Option A: From Source**
 ```bash
-# Clone the repository (if not done already)
+# Clone and build
 git clone https://github.com/yourusername/OpenVault.git
 cd OpenVault
-
-# Build the extension
 npm run build:extension
 ```
 
-**Option B: From Release**
-1. Go to the [**Releases**](../../releases) page
-2. Download `extension.zip`
-3. Extract the ZIP file to a folder
+**From Release:**
 
-##### Step 2: Load in Browser
+Download `extension.zip` from the [Releases](../../releases) page and extract it.
 
-###### Google Chrome / Microsoft Edge / Brave
+**Load in Your Browser:**
 
-1. Open your browser and navigate to:
-   - **Chrome**: `chrome://extensions/`
-   - **Edge**: `edge://extensions/`
-   - **Brave**: `brave://extensions/`
+1. Open your browser and go to:
+   - Chrome: `chrome://extensions/`
+   - Edge: `edge://extensions/`
+   - Brave: `brave://extensions/`
 
-2. Enable **Developer mode** (toggle in the top-right corner)
+2. Enable **Developer mode** (toggle in top-right)
 
-3. Click **"Load unpacked"**
+3. Click **Load unpacked**
 
-4. Navigate to and select the `extension/` folder from the project
+4. Select the `extension/` folder
 
-5. The extension icon should now appear in your toolbar!
+5. The OpenVault icon will appear in your toolbar
 
-<details>
-<summary>📸 Click to see visual guide</summary>
+**Using the Extension:**
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Extensions                                    [Developer mode] ☑ │
-├─────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  [Load unpacked]  [Pack extension]  [Update]                      │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────┐     │
-│  │  🔐 Vault Password Manager                                │     │
-│  │  Version: 1.0.0                                           │     │
-│  │  ID: xxxxxxxxxxxxxxxxxxxxxxxxxx                           │     │
-│  │  ☑ Enabled                                [Remove] [Details]   │
-│  └──────────────────────────────────────────────────────────┘     │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-</details>
-
-##### Step 3: Using the Extension
-
-1. **Make sure the OpenVault desktop app is running**
-2. Click the extension icon in your browser toolbar
-3. The extension will automatically connect to your desktop vault
-4. Navigate to any login page
-5. Use one of these methods to autofill:
-   - Click the extension icon and select a credential
-   - Press `Ctrl+Shift+F` (or `Cmd+Shift+F` on Mac) to autofill
-   - Press `Ctrl+Shift+L` (or `Cmd+Shift+L` on Mac) to open the popup
+Make sure the desktop app is running, then:
+- Click the extension icon to view and select credentials
+- Press `Ctrl+Shift+L` to open the popup
+- Press `Ctrl+Shift+F` to autofill on the current page
 
 ---
 
-## 🔐 Security Architecture
+## Security
 
-### Encryption Details
+OpenVault uses standard, well-tested cryptography. Nothing clever, just proven algorithms implemented correctly.
 
-| Component | Algorithm | Purpose |
-|-----------|-----------|---------|
-| **Vault Encryption** | AES-256-GCM | Encrypts all stored passwords |
-| **Key Derivation** | Argon2id | Derives encryption key from master password |
-| **TOTP Generation** | HMAC-SHA1 | Generates 2FA codes |
-| **Sync Protocol** | TLS 1.3 + Custom | Encrypted LAN synchronization |
+**Encryption Stack:**
 
-### How Your Data is Protected
+- **AES-256-GCM** for encrypting vault data
+- **Argon2id** for deriving encryption keys from your master password
+- **HMAC-SHA1** for TOTP two-factor codes
+- **TLS 1.3** for encrypted LAN sync
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                         YOUR DEVICE                                 │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   Master Password ──► Argon2id KDF ──► 256-bit Encryption Key      │
-│                                              │                      │
-│                                              ▼                      │
-│   ┌─────────────┐      AES-256-GCM      ┌─────────────┐            │
-│   │  Your Data  │ ───────────────────► │ Encrypted   │            │
-│   │  (Plain)    │                       │ (vault.db)  │            │
-│   └─────────────┘                       └─────────────┘            │
-│                                                                     │
-│   ❌ Never leaves your device                                       │
-│   ❌ No cloud upload                                                │
-│   ❌ No telemetry                                                   │
-│                                                                     │
-└────────────────────────────────────────────────────────────────────┘
-```
+**How It Works:**
+
+When you create a vault, your master password is run through Argon2id (a memory-hard key derivation function designed to resist brute force attacks). This produces a 256-bit encryption key. All your passwords and data are encrypted with AES-256-GCM using this key before being written to disk.
+
+The vault file (`vault.db`) is just a SQLite database containing encrypted data. Without your master password, it's useless. The encryption key is never stored anywhere—it's derived fresh from your master password each time you unlock the vault.
+
+**Important Security Notes:**
+
+- **Your master password cannot be recovered.** If you forget it, your vault is permanently locked. There's no backdoor, no recovery mechanism.
+- **Backup your vault file.** Copy `vault.db` to a secure location regularly. This is your only backup.
+- **Use a strong master password.** At least 12 characters. Consider using a passphrase—multiple random words are both strong and memorable.
+- **LAN sync is encrypted**, but it still transmits data over your network. Only use it on networks you trust.
 
 ---
 
-## ⚡ Features
+## What You Can Do
 
-### Password Management
-- ✅ Secure storage for usernames, passwords, URLs, and notes
-- ✅ Password generator with customizable settings
-- ✅ Password strength analyzer
-- ✅ Favorites and folder organization
-- ✅ Quick search across all entries
+**Password Management:**
+- Store usernames, passwords, URLs, and notes
+- Generate strong random passwords
+- Organize entries with favorites and folders
+- Search across all entries
 
-### Two-Factor Authentication (TOTP)
-- ✅ Generate time-based one-time passwords
-- ✅ Supports otpauth:// URLs and raw secrets
-- ✅ Live countdown timer
-- ✅ One-click copy
+**Security Features:**
+- Password strength analysis
+- Identify weak or reused passwords
+- Security score dashboard
+- Local breach database checking
 
-### Security Dashboard
-- ✅ Overall security score
-- ✅ Weak password detection
-- ✅ Reused password detection
-- ✅ Breach check (local database)
-- ✅ Actionable recommendations
+**Two-Factor Authentication:**
+- Generate TOTP codes
+- Support for otpauth:// URLs
+- One-click copy with countdown timer
 
-### LAN Sync (Optional)
-- ✅ Sync between devices on local network
-- ✅ Automatic device discovery (Bonjour/mDNS)
-- ✅ End-to-end encrypted sync protocol
-- ✅ Conflict resolution
+**Synchronization:**
+- Optional LAN sync between your Windows and Android devices
+- Automatic device discovery
+- End-to-end encrypted sync protocol
+- Conflict resolution
 
-### User Experience
-- ✅ Dark/Light theme (system-aware)
-- ✅ System tray integration
-- ✅ Global keyboard shortcuts
-- ✅ Auto-lock after inactivity
+**User Interface:**
+- Dark and light themes
+- System tray integration (Windows)
+- Auto-lock after inactivity
+- Keyboard shortcuts
 
 ---
 
-## 🛠️ Development
+## Development
 
-### Project Structure
+If you want to contribute or modify OpenVault, here's what you need to know.
 
-```
-OpenVault/
-├── src/                    # Desktop app source
-│   ├── core/               # Encryption & vault logic
-│   ├── db/                 # Database layer (SQLite)
-│   ├── main/               # Electron main process
-│   ├── renderer/           # React UI
-│   └── sync/               # LAN sync protocol
-├── extension/              # Browser extension
-│   ├── background.ts       # Service worker
-│   ├── content.ts          # Content script
-│   ├── popup/              # Extension popup UI
-│   └── manifest.json       # Extension manifest (MV3)
-├── vault-mobile/           # Mobile app (React Native/Expo)
-│   ├── app/                # App routes
-│   └── src/                # Source code
-├── release/                # Built installers
-└── vault.db                # Encrypted vault (created on first use)
-```
+**Tech Stack:**
+- Desktop: Electron, React, TypeScript, better-sqlite3
+- Mobile: React Native, Expo
+- Extension: Chrome Extension Manifest V3
+- Encryption: Node.js crypto module, Argon2
 
-### Available Scripts
+**Available Commands:**
 
 ```bash
-# Desktop App
-npm run dev              # Start development mode
-npm run build            # Build all components
-npm run package          # Package for distribution
+# Desktop development
+npm run dev              # Start in dev mode
+npm run build            # Build all components  
+npm run package          # Create installer
 
-# Browser Extension
+# Extension
 npm run build:extension  # Build extension
 
-# Mobile App
+# Mobile
 cd vault-mobile
 npm run dev              # Start Expo dev server
 npm run build:android    # Build Android APK
-npm run build:ios        # Build iOS IPA
 ```
 
-### Tech Stack
+**Contributing:**
 
-| Component | Technologies |
-|-----------|--------------|
-| **Desktop** | Electron, React, TypeScript, Vite, better-sqlite3 |
-| **Mobile** | React Native, Expo, TypeScript |
-| **Extension** | Chrome Extension Manifest V3, TypeScript |
-| **Encryption** | Node.js crypto (AES-256-GCM), Argon2 |
+Pull requests are welcome. For major changes, open an issue first to discuss what you'd like to change.
 
----
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'Add amazing feature'`
-4. **Push** to the branch: `git push origin feature/amazing-feature`
-5. **Open** a Pull Request
-
-### Contribution Ideas
-- 🐛 Bug fixes
-- ✨ New features
-- 📖 Documentation improvements
-- 🌐 Translations
-- 🧪 Tests
-- 🎨 UI/UX improvements
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Open a pull request
 
 ---
 
-## ⚠️ Security Notice
 
-While OpenVault implements strong encryption and security best practices, please note:
+## License
 
-- **🔑 Your master password is your responsibility** — If lost, your vault **cannot** be recovered
-- **💾 Backup your vault** — Regularly backup `vault.db` to a secure location
-- **💪 Use a strong master password** — Minimum 12+ characters recommended
-- **🔄 Keep the app updated** — Security updates are important
-- **🚨 Report vulnerabilities** — If you discover a security issue, please report it responsibly
+This project is licensed under the MIT License.
 
----
+This means:
+- ✅ You can use this software for any purpose, including commercial use
+- ✅ You can modify and distribute this software freely
+- ✅ You can use it in proprietary software
+- ✅ The only requirement is to include the original copyright and license notice
 
-## 📄 License
+See the [LICENSE](LICENSE) file for full details.
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-## 📚 Resources
-
-- [Electron Security Guide](https://www.electronjs.org/docs/latest/tutorial/security)
-- [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-- [RFC 6238 - TOTP Algorithm](https://tools.ietf.org/html/rfc6238)
+**Why MIT?** We believe in maximum freedom. Use OpenVault however you want—fork it, modify it, integrate it into your own projects. The MIT license ensures you have complete flexibility while keeping the software open and accessible to everyone.
 
 ---
 
-## 💬 Support
+## Security Disclosure
 
-- 📝 [Open an Issue](../../issues) for bugs or feature requests
-- 💬 [Start a Discussion](../../discussions) for questions
+If you discover a security vulnerability, please email arya instead of opening a public issue. I'll respond as quickly as possible.
 
 ---
-
-<p align="center">
-  <strong>Built with ❤️ for privacy and security</strong>
-</p>
 
 <p align="center">
   <em>Your passwords. Your device. Your control.</em>
