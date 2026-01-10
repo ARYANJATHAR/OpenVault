@@ -67,7 +67,7 @@ export default function UnlockScreen() {
 
   const handleSubmit = async () => {
     setError('');
-    
+
     if (isCreateMode) {
       // Validate for creation
       if (password.length < 8) {

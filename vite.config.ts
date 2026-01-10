@@ -12,7 +12,19 @@ export default defineConfig({
     build: {
         outDir: '../../dist/renderer',
         emptyOutDir: true,
-        sourcemap: true,
+        sourcemap: false, // Disable source maps for production (saves ~600KB)
+        minify: 'terser', // Better minification than esbuild
+        terserOptions: {
+            compress: {
+                drop_console: true, // Remove console.log in production
+                drop_debugger: true,
+            },
+        },
+        rollupOptions: {
+            output: {
+                manualChunks: undefined, // Let Vite optimize chunking
+            },
+        },
     },
 
     resolve: {

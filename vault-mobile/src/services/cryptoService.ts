@@ -36,23 +36,29 @@ export async function createVaultHeader(): Promise<VaultHeader> {
   const salt = await getRandomBytes(32);
   return {
     salt,
-    iterations: 100000,
+    iterations: 100000, // Match desktop app for cross-device compatibility
     version: 1,
   };
 }
 
 /**
  * Derive master key from password using PBKDF2
+ * @param password - The master password
+ * @param salt - The salt stored in vault_meta
+ * @param iterations - Number of PBKDF2 iterations (default 100000 for backwards compatibility)
  */
-export async function deriveMasterKey(password: string, salt: string): Promise<string> {
-  const iterations = 100000;
+export async function deriveMasterKey(
+  password: string,
+  salt: string,
+  iterations: number = 100000 // Default to 100k for backwards compatibility with existing vaults
+): Promise<string> {
   const keyLength = 256 / 32; // 256 bits = 8 words
-  
+
   const key = CryptoJS.PBKDF2(password, salt, {
     keySize: keyLength,
     iterations: iterations,
   });
-  
+
   return key.toString(CryptoJS.enc.Base64);
 }
 
@@ -61,7 +67,7 @@ export async function deriveMasterKey(password: string, salt: string): Promise<s
  */
 export function deriveKeys(masterKey: string): DerivedKeys {
   const masterKeyBytes = CryptoJS.enc.Base64.parse(masterKey);
-  
+
   const vaultKey = CryptoJS.HmacSHA256(masterKeyBytes, 'vault-key').toString(CryptoJS.enc.Base64);
   const syncKey = CryptoJS.HmacSHA256(masterKeyBytes, 'sync-key').toString(CryptoJS.enc.Base64);
   const exportKey = CryptoJS.HmacSHA256(masterKeyBytes, 'export-key').toString(CryptoJS.enc.Base64);
@@ -83,7 +89,7 @@ export function hashMasterKey(key: string): string {
  */
 export async function encryptToString(plaintext: string, key: string): Promise<string> {
   const keyBytes = CryptoJS.enc.Base64.parse(key);
-  
+
   // Generate IV using expo-crypto (secure random)
   const ivBytes = await Crypto.getRandomBytesAsync(16);
   // IMPORTANT: CryptoJS WordArray "words" are 32-bit; passing a byte[] makes a 64-byte IV.
@@ -95,13 +101,13 @@ export async function encryptToString(plaintext: string, key: string): Promise<s
     );
   }
   const iv = CryptoJS.lib.WordArray.create(ivWords, 16);
-  
+
   const encrypted = CryptoJS.AES.encrypt(plaintext, keyBytes, {
     iv: iv,
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7,
   });
-  
+
   // Combine IV + encrypted data
   const combined = iv.concat(encrypted.ciphertext);
   return combined.toString(CryptoJS.enc.Base64);
@@ -134,7 +140,7 @@ export function decryptFromStringV1(ciphertext: string, key: string): string {
       mode: CryptoJS.mode.CBC,
       padding: CryptoJS.pad.Pkcs7,
     });
-    
+
     const result = decrypted.toString(CryptoJS.enc.Utf8);
     if (!result && ciphertext.length > 0) throw new Error('V1 decryption returned empty');
     return result;
@@ -153,12 +159,12 @@ export function decryptFromString(ciphertext: string, key: string): string {
   try {
     const keyBytes = CryptoJS.enc.Base64.parse(key);
     const combined = CryptoJS.enc.Base64.parse(ciphertext);
-    
+
     // Safety check for WordArray
     if (!combined || !combined.words || combined.words.length < 4) {
       throw new Error('Invalid or too short ciphertext');
     }
-    
+
     const tryDecryptCbc = (ivWordStart: number, ivWordCount: number, ctWordStart: number, ctSigBytes: number, label: string) => {
       const ivWordsLocal = combined.words.slice(ivWordStart, ivWordStart + ivWordCount);
       const iv = CryptoJS.lib.WordArray.create(ivWordsLocal, 16);

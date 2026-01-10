@@ -15,20 +15,20 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
     useEffect(() => {
         loadSyncInfo();
         const interval = setInterval(loadSyncInfo, 3000); // Refresh every 3 seconds
-        
+
         // Listen for sync completion
         const handleSyncComplete = (data: { count: number; imported?: number; updated?: number; skipped?: number }) => {
             setLastSyncCount(data.count);
             setIsSyncing(false);
-            
+
             // Clear timeout
             if (syncTimeoutRef.current) {
                 clearTimeout(syncTimeoutRef.current);
                 syncTimeoutRef.current = null;
             }
-            
+
             onEntriesRefresh(); // Refresh entries list
-            
+
             // Show success message
             if (data.count > 0) {
                 const details = [];
@@ -38,9 +38,9 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                 console.log(`Sync complete: ${details.join(', ')}`);
             }
         };
-        
+
         window.vaultAPI?.on('mobile-sync-complete', handleSyncComplete);
-        
+
         return () => {
             clearInterval(interval);
             window.vaultAPI?.off('mobile-sync-complete', handleSyncComplete);
@@ -53,7 +53,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
             const ips = await window.vaultAPI?.mobileSync.getLocalIPs();
             const running = await window.vaultAPI?.mobileSync.isRunning();
             const connected = await window.vaultAPI?.mobileSync.getConnectedCount();
-            
+
             setSyncInfo(info);
             setAllIPs(ips || []);
             setIsRunning(running || false);
@@ -81,7 +81,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
             setQrCodeSVG('');
             return;
         }
-        
+
         generateQRCodeSVG(qrData, 184)
             .then(svg => setQrCodeSVG(svg))
             .catch(error => {
@@ -94,9 +94,9 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
         <div style={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
             <header className="content-header" style={{ marginBottom: '24px' }}>
                 <h2>Mobile Sync</h2>
-                <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: '8px',
                     fontSize: '12px',
                     color: isRunning ? '#2ecc71' : '#e74c3c'
@@ -112,11 +112,11 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
             </header>
 
             {/* Connection Status */}
-            <div style={{ 
-                background: 'var(--bg-surface)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '8px', 
-                padding: '20px', 
+            <div style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '20px',
                 marginBottom: '20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -153,16 +153,16 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                         className="add-button"
                         onClick={async () => {
                             if (isSyncing) return; // Prevent double-click
-                            
+
                             // Clear any existing timeout
                             if (syncTimeoutRef.current) {
                                 clearTimeout(syncTimeoutRef.current);
                                 syncTimeoutRef.current = null;
                             }
-                            
+
                             setIsSyncing(true);
                             setLastSyncCount(null); // Clear previous count
-                            
+
                             try {
                                 const result = await window.vaultAPI?.mobileSync.requestSync();
                                 if (!result?.success) {
@@ -170,7 +170,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                                     setIsSyncing(false);
                                     return;
                                 }
-                                
+
                                 // Set timeout as fallback in case event doesn't fire
                                 syncTimeoutRef.current = setTimeout(() => {
                                     console.warn('Sync timeout - resetting state');
@@ -188,7 +188,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                             }
                         }}
                         disabled={isSyncing}
-                        style={{ 
+                        style={{
                             minWidth: '120px',
                             opacity: isSyncing ? 0.6 : 1,
                             cursor: isSyncing ? 'not-allowed' : 'pointer',
@@ -216,17 +216,17 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 {/* QR Code Section */}
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '24px',
                     textAlign: 'center'
                 }}>
                     <h3 style={{ fontSize: '14px', fontWeight: '500', marginBottom: '16px' }}>
                         Scan QR Code
                     </h3>
-                    
+
                     {/* QR Code Display */}
                     <div style={{
                         width: '200px',
@@ -245,33 +245,33 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                             <div style={{ color: '#666', fontSize: '12px' }}>Loading...</div>
                         )}
                     </div>
-                    
+
                     <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         Open Vault app on your phone and scan this code
                     </p>
                 </div>
 
                 {/* Manual Connection Section */}
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '24px'
                 }}>
                     <h3 style={{ fontSize: '14px', fontWeight: '500', marginBottom: '16px' }}>
                         Manual Connection
                     </h3>
-                    
+
                     <div style={{ marginBottom: '16px' }}>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
                             IP Address{allIPs.length > 1 ? 'es' : ''}
                         </div>
                         {allIPs.map((ip, index) => (
-                            <div 
+                            <div
                                 key={index}
-                                style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     justifyContent: 'space-between',
                                     padding: '10px 12px',
                                     background: 'var(--bg-base)',
@@ -282,7 +282,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                                 }}
                             >
                                 <span>{ip}</span>
-                                <button 
+                                <button
                                     className="copy-pill"
                                     onClick={() => navigator.clipboard.writeText(ip)}
                                     style={{ fontSize: '11px', padding: '4px 10px' }}
@@ -297,9 +297,9 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
                             Port
                         </div>
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '10px 12px',
                             background: 'var(--bg-base)',
@@ -308,7 +308,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                             fontSize: '14px'
                         }}>
                             <span>{syncInfo?.port || '51821'}</span>
-                            <button 
+                            <button
                                 className="copy-pill"
                                 onClick={() => navigator.clipboard.writeText(String(syncInfo?.port || '51821'))}
                                 style={{ fontSize: '11px', padding: '4px 10px' }}
@@ -318,9 +318,9 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                         </div>
                     </div>
 
-                    <div style={{ 
-                        padding: '12px', 
-                        background: 'rgba(46, 204, 113, 0.1)', 
+                    <div style={{
+                        padding: '12px',
+                        background: 'rgba(46, 204, 113, 0.1)',
                         borderRadius: '6px',
                         fontSize: '12px',
                         color: 'var(--text-secondary)'
@@ -337,7 +337,7 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
             </div>
 
             {/* Info Section */}
-            <div style={{ 
+            <div style={{
                 marginTop: '20px',
                 padding: '16px',
                 background: 'var(--bg-surface)',
@@ -355,13 +355,13 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                     <strong>Note:</strong>
                 </div>
                 <p style={{ margin: 0 }}>
-                    Both devices must be on the same Wi-Fi network. No internet connection is required - 
+                    Both devices must be on the same Wi-Fi network. No internet connection is required -
                     all data stays on your local network. Your passwords are encrypted during transfer.
                 </p>
             </div>
 
             {/* Hotspot Mode Section */}
-            <div style={{ 
+            <div style={{
                 marginTop: '16px',
                 padding: '16px',
                 background: 'linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%)',
@@ -387,10 +387,10 @@ const MobileSyncPanel: React.FC<{ onEntriesRefresh: () => void }> = ({ onEntries
                     <li>Wait for connection, then use the IP addresses shown above</li>
                     <li>The first IP that starts with <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>192.168.43.x</code> usually works for hotspots</li>
                 </ol>
-                <div style={{ 
-                    marginTop: '12px', 
-                    padding: '8px 12px', 
-                    background: 'rgba(0,0,0,0.2)', 
+                <div style={{
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    background: 'rgba(0,0,0,0.2)',
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
@@ -451,32 +451,32 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
             </header>
 
             {/* Security Score */}
-            <div style={{ 
-                background: 'var(--bg-surface)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '8px', 
-                padding: '24px', 
-                marginBottom: '24px' 
+            <div style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '24px',
+                marginBottom: '24px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '400' }}>Security Score</h3>
-                    <div style={{ 
-                        fontSize: '32px', 
-                        fontWeight: '300', 
-                        color: getScoreColor(audit.securityScore) 
+                    <div style={{
+                        fontSize: '32px',
+                        fontWeight: '300',
+                        color: getScoreColor(audit.securityScore)
                     }}>
                         {audit.securityScore}/100
                     </div>
                 </div>
-                <div style={{ 
-                    height: '8px', 
-                    background: 'var(--bg-base)', 
-                    borderRadius: '4px', 
-                    overflow: 'hidden' 
+                <div style={{
+                    height: '8px',
+                    background: 'var(--bg-base)',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
                 }}>
-                    <div style={{ 
-                        height: '100%', 
-                        width: `${audit.securityScore}%`, 
+                    <div style={{
+                        height: '100%',
+                        width: `${audit.securityScore}%`,
                         background: getScoreColor(audit.securityScore),
                         transition: 'all 0.3s ease'
                     }} />
@@ -484,16 +484,16 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
             </div>
 
             {/* Issue Summary */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(4, 1fr)', 
-                gap: '16px', 
-                marginBottom: '24px' 
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '16px',
+                marginBottom: '24px'
             }}>
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '16px',
                     textAlign: 'center'
                 }}>
@@ -504,10 +504,10 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                         Critical
                     </div>
                 </div>
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '16px',
                     textAlign: 'center'
                 }}>
@@ -518,10 +518,10 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                         High
                     </div>
                 </div>
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '16px',
                     textAlign: 'center'
                 }}>
@@ -532,10 +532,10 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                         Medium
                     </div>
                 </div>
-                <div style={{ 
-                    background: 'var(--bg-surface)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
+                <div style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
                     padding: '16px',
                     textAlign: 'center'
                 }}>
@@ -556,30 +556,30 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {audit.issues.map((issue: any, index: number) => (
-                            <div 
+                            <div
                                 key={index}
-                                style={{ 
-                                    background: 'var(--bg-surface)', 
-                                    border: '1px solid var(--border)', 
-                                    borderRadius: '8px', 
+                                style={{
+                                    background: 'var(--bg-surface)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
                                     padding: '16px',
                                     display: 'flex',
                                     alignItems: 'flex-start',
                                     gap: '12px'
                                 }}
                             >
-                                <div style={{ 
-                                    width: '8px', 
-                                    height: '8px', 
-                                    borderRadius: '50%', 
+                                <div style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
                                     background: getSeverityColor(issue.severity),
                                     marginTop: '6px',
                                     flexShrink: 0
                                 }} />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ 
-                                        fontSize: '14px', 
-                                        fontWeight: '500', 
+                                    <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: '500',
                                         marginBottom: '4px',
                                         textTransform: 'capitalize'
                                     }}>
@@ -594,9 +594,9 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                                         </div>
                                     )}
                                 </div>
-                                <span style={{ 
-                                    fontSize: '10px', 
-                                    padding: '4px 8px', 
+                                <span style={{
+                                    fontSize: '10px',
+                                    padding: '4px 8px',
                                     borderRadius: '4px',
                                     background: getSeverityColor(issue.severity) + '20',
                                     color: getSeverityColor(issue.severity),
@@ -610,10 +610,10 @@ const SecurityDashboard: React.FC<{ audit: any; onRefresh: () => void }> = ({ au
                     </div>
                 </div>
             ) : (
-                <div style={{ 
-                    textAlign: 'center', 
-                    padding: '40px', 
-                    color: 'var(--text-secondary)' 
+                <div style={{
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: 'var(--text-secondary)'
                 }}>
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -715,6 +715,8 @@ const App: React.FC = () => {
     const [passwordStrength, setPasswordStrength] = useState<{ score: number; level: string; feedback: string[] } | null>(null);
     const [securityAudit, setSecurityAudit] = useState<any>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showMasterPassword, setShowMasterPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [showEditPassword, setShowEditPassword] = useState(false);
     const [isGeneratingNewPassword, setIsGeneratingNewPassword] = useState(false);
     const [isGeneratingEditPassword, setIsGeneratingEditPassword] = useState(false);
@@ -741,7 +743,7 @@ const App: React.FC = () => {
 
     useEffect(() => {
         checkVaultStatus();
-        
+
         // Load theme
         window.vaultAPI?.theme.get().then((savedTheme) => {
             setTheme(savedTheme);
@@ -758,7 +760,7 @@ const App: React.FC = () => {
         window.vaultAPI?.on('quick-search', () => {
             document.getElementById('search-input')?.focus();
         });
-        
+
         return () => {
             window.vaultAPI?.off('quick-search', () => { });
             window.vaultAPI?.off('theme-changed', handleThemeChange);
@@ -775,7 +777,7 @@ const App: React.FC = () => {
             }
 
             const newCodes = new Map<string, { code: string; timeRemaining: number }>();
-            
+
             for (const entry of entriesWithTOTP) {
                 if (entry.totpSecret && entry.totpSecret.trim().length > 0) {
                     try {
@@ -791,7 +793,7 @@ const App: React.FC = () => {
                     }
                 }
             }
-            
+
             setTotpCodes(newCodes);
         };
 
@@ -1026,23 +1028,93 @@ const App: React.FC = () => {
                         {isCreate ? 'Set a master password' : 'Enter master password to unlock'}
                     </p>
                     <form onSubmit={isCreate ? handleCreate : handleUnlock}>
-                        <div className="form-group">
+                        <div className="form-group" style={{ position: 'relative' }}>
                             <input
-                                type="password"
+                                type={showMasterPassword ? "text" : "password"}
                                 placeholder="Master Key"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 autoFocus
+                                style={{ paddingRight: '48px' }}
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowMasterPassword(!showMasterPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '12px',
+                                    top: '12px',
+                                    bottom: '32px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--text-muted)',
+                                    transition: 'color 0.2s ease'
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                title={showMasterPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showMasterPassword ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                        <line x1="1" y1="1" x2="23" y2="23" />
+                                    </svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                )}
+                            </button>
                         </div>
                         {isCreate && (
-                            <div className="form-group">
+                            <div className="form-group" style={{ position: 'relative' }}>
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? "text" : "password"}
                                     placeholder="Confirm Key"
                                     value={confirmPassword}
                                     onChange={e => setConfirmPassword(e.target.value)}
+                                    style={{ paddingRight: '48px' }}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '12px',
+                                        bottom: '32px',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'var(--text-muted)',
+                                        transition: 'color 0.2s ease'
+                                    }}
+                                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showConfirmPassword ? (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                            <line x1="1" y1="1" x2="23" y2="23" />
+                                        </svg>
+                                    ) : (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
                         )}
                         {error && <p className="error-message" style={{ color: 'var(--error)', fontSize: '12px', marginBottom: '16px' }}>{error}</p>}
@@ -1079,7 +1151,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 <nav className="sidebar-nav">
-                    <button 
+                    <button
                         className={`nav-item ${!showFavorites && currentView === 'vault' ? 'active' : ''}`}
                         onClick={() => {
                             setShowFavorites(false);
@@ -1092,7 +1164,7 @@ const App: React.FC = () => {
                         All Passwords
                         <span className="count">{entries.length}</span>
                     </button>
-                    <button 
+                    <button
                         className={`nav-item ${showFavorites ? 'active' : ''}`}
                         onClick={() => {
                             setShowFavorites(true);
@@ -1105,7 +1177,7 @@ const App: React.FC = () => {
                         Favorites
                         {favoriteCount > 0 && <span className="count">{favoriteCount}</span>}
                     </button>
-                    <button 
+                    <button
                         className={`nav-item ${currentView === 'security' ? 'active' : ''}`}
                         onClick={() => {
                             setCurrentView('security');
@@ -1123,7 +1195,7 @@ const App: React.FC = () => {
                             </span>
                         )}
                     </button>
-                    <button 
+                    <button
                         className={`nav-item ${currentView === 'mobilesync' ? 'active' : ''}`}
                         onClick={() => {
                             setCurrentView('mobilesync');
@@ -1138,8 +1210,8 @@ const App: React.FC = () => {
                     </button>
                 </nav>
                 <div className="sidebar-footer">
-                    <button 
-                        className="icon-button theme-toggle" 
+                    <button
+                        className="icon-button theme-toggle"
                         onClick={handleThemeToggle}
                         title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                     >
@@ -1181,40 +1253,40 @@ const App: React.FC = () => {
                         </header>
 
                         <div className="entry-list">
-                    <div className="entry-grid">
-                        {filteredEntries.map(entry => (
-                            <div
-                                key={entry.id}
-                                className={`entry-card ${selectedEntry?.id === entry.id ? 'selected' : ''}`}
-                                onClick={() => {
-                                    setSelectedEntry(entry);
-                                    setIsEditing(false);
-                                }}
-                            >
-                                <div className="entry-avatar">{entry.title.charAt(0).toUpperCase()}</div>
-                                <div className="entry-meta">
-                                    <div className="entry-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {entry.title}
-                                        {entry.isFavorite && (
-                                            <svg 
-                                                width="14" 
-                                                height="14" 
-                                                viewBox="0 0 24 24" 
-                                                fill="#fbbf24" 
-                                                stroke="#fbbf24" 
-                                                strokeWidth="2"
-                                                style={{ flexShrink: 0 }}
-                                            >
-                                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                                            </svg>
-                                        )}
+                            <div className="entry-grid">
+                                {filteredEntries.map(entry => (
+                                    <div
+                                        key={entry.id}
+                                        className={`entry-card ${selectedEntry?.id === entry.id ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setSelectedEntry(entry);
+                                            setIsEditing(false);
+                                        }}
+                                    >
+                                        <div className="entry-avatar">{entry.title.charAt(0).toUpperCase()}</div>
+                                        <div className="entry-meta">
+                                            <div className="entry-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {entry.title}
+                                                {entry.isFavorite && (
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="#fbbf24"
+                                                        stroke="#fbbf24"
+                                                        strokeWidth="2"
+                                                        style={{ flexShrink: 0 }}
+                                                    >
+                                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <div className="entry-subtext">{entry.username}</div>
+                                        </div>
                                     </div>
-                                    <div className="entry-subtext">{entry.username}</div>
-                                </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
                     </>
                 )}
             </main>
@@ -1242,23 +1314,23 @@ const App: React.FC = () => {
                         <div className="detail-actions">
                             {!isEditing ? (
                                 <>
-                                    <button 
-                                        className="detail-btn" 
+                                    <button
+                                        className="detail-btn"
                                         onClick={() => handleToggleFavorite(selectedEntry.id)}
-                                        style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '6px',
                                             color: selectedEntry.isFavorite ? '#fbbf24' : 'inherit'
                                         }}
                                         title={selectedEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                                     >
-                                        <svg 
-                                            width="16" 
-                                            height="16" 
-                                            viewBox="0 0 24 24" 
-                                            fill={selectedEntry.isFavorite ? 'currentColor' : 'none'} 
-                                            stroke="currentColor" 
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill={selectedEntry.isFavorite ? 'currentColor' : 'none'}
+                                            stroke="currentColor"
                                             strokeWidth="2"
                                         >
                                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -1299,17 +1371,17 @@ const App: React.FC = () => {
                                     <div className="info-value-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                                         {totpCodes.get(selectedEntry.id) ? (
                                             <>
-                                                <span className="info-value" style={{ 
-                                                    fontFamily: 'monospace', 
-                                                    fontSize: '20px', 
+                                                <span className="info-value" style={{
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '20px',
                                                     fontWeight: '600',
                                                     letterSpacing: '4px',
                                                     color: 'var(--accent)'
                                                 }}>
                                                     {totpCodes.get(selectedEntry.id)?.code}
                                                 </span>
-                                                <div style={{ 
-                                                    fontSize: '11px', 
+                                                <div style={{
+                                                    fontSize: '11px',
                                                     color: 'var(--text-muted)',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -1329,8 +1401,8 @@ const App: React.FC = () => {
                                         ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
                                                 <span className="info-value" style={{ color: 'var(--text-muted)' }}>Generating...</span>
-                                                <button 
-                                                    className="copy-pill" 
+                                                <button
+                                                    className="copy-pill"
                                                     onClick={async () => {
                                                         try {
                                                             const result = await window.vaultAPI?.totp.generate(selectedEntry.totpSecret!);
@@ -1421,35 +1493,35 @@ const App: React.FC = () => {
                                 </button>
                                 {passwordStrength && (
                                     <div style={{ marginTop: '8px' }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '8px',
                                             marginBottom: '4px'
                                         }}>
-                                            <div style={{ 
-                                                flex: 1, 
-                                                height: '4px', 
-                                                background: 'var(--bg-base)', 
+                                            <div style={{
+                                                flex: 1,
+                                                height: '4px',
+                                                background: 'var(--bg-base)',
                                                 borderRadius: '2px',
                                                 overflow: 'hidden'
                                             }}>
-                                                <div style={{ 
-                                                    height: '100%', 
+                                                <div style={{
+                                                    height: '100%',
                                                     width: `${passwordStrength.score}%`,
                                                     background: passwordStrength.level === 'very-weak' ? '#e74c3c' :
-                                                                passwordStrength.level === 'weak' ? '#f39c12' :
-                                                                passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                            passwordStrength.level === 'fair' ? '#f1c40f' :
                                                                 passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
                                                     transition: 'all 0.3s ease'
                                                 }} />
                                             </div>
-                                            <span style={{ 
-                                                fontSize: '11px', 
+                                            <span style={{
+                                                fontSize: '11px',
                                                 color: passwordStrength.level === 'very-weak' ? '#e74c3c' :
-                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                    passwordStrength.level === 'weak' ? '#f39c12' :
                                                         passwordStrength.level === 'fair' ? '#f1c40f' :
-                                                        passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                            passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
                                                 textTransform: 'capitalize',
                                                 fontWeight: '500'
                                             }}>
@@ -1569,35 +1641,35 @@ const App: React.FC = () => {
                                 </button>
                                 {passwordStrength && (
                                     <div style={{ marginTop: '8px' }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '8px',
                                             marginBottom: '4px'
                                         }}>
-                                            <div style={{ 
-                                                flex: 1, 
-                                                height: '4px', 
-                                                background: 'var(--bg-base)', 
+                                            <div style={{
+                                                flex: 1,
+                                                height: '4px',
+                                                background: 'var(--bg-base)',
                                                 borderRadius: '2px',
                                                 overflow: 'hidden'
                                             }}>
-                                                <div style={{ 
-                                                    height: '100%', 
+                                                <div style={{
+                                                    height: '100%',
                                                     width: `${passwordStrength.score}%`,
                                                     background: passwordStrength.level === 'very-weak' ? '#e74c3c' :
-                                                                passwordStrength.level === 'weak' ? '#f39c12' :
-                                                                passwordStrength.level === 'fair' ? '#f1c40f' :
+                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                            passwordStrength.level === 'fair' ? '#f1c40f' :
                                                                 passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
                                                     transition: 'all 0.3s ease'
                                                 }} />
                                             </div>
-                                            <span style={{ 
-                                                fontSize: '11px', 
+                                            <span style={{
+                                                fontSize: '11px',
                                                 color: passwordStrength.level === 'very-weak' ? '#e74c3c' :
-                                                        passwordStrength.level === 'weak' ? '#f39c12' :
+                                                    passwordStrength.level === 'weak' ? '#f39c12' :
                                                         passwordStrength.level === 'fair' ? '#f1c40f' :
-                                                        passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
+                                                            passwordStrength.level === 'good' ? '#3498db' : '#2ecc71',
                                                 textTransform: 'capitalize',
                                                 fontWeight: '500'
                                             }}>

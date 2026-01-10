@@ -247,6 +247,16 @@ export default function VaultScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        // Performance optimizations
+        removeClippedSubviews={true}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        getItemLayout={(data, index) => ({
+          length: 80, // Approximate item height
+          offset: 80 * index,
+          index,
+        })}
       />
     </SafeAreaView>
   );

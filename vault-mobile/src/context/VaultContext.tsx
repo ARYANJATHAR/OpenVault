@@ -4,8 +4,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { vaultService, VaultEntry } from '../services/vaultService';
 import { syncService } from '../services/syncService';
+
+const VAULT_EXISTS_CACHE_KEY = 'vault_exists_cache';
 
 interface SyncEntry {
   id: string;
@@ -51,9 +54,29 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
   const checkVaultStatus = async () => {
     try {
+      // Fast path: Check cache first for instant response
+      const cachedExists = await AsyncStorage.getItem(VAULT_EXISTS_CACHE_KEY);
+      if (cachedExists !== null) {
+        setVaultExists(cachedExists === 'true');
+        setIsUnlocked(vaultService.getIsUnlocked());
+        setIsLoading(false);
+
+        // Validate cache in background (non-blocking)
+        vaultService.vaultExists().then(actualExists => {
+          if (actualExists !== (cachedExists === 'true')) {
+            setVaultExists(actualExists);
+            AsyncStorage.setItem(VAULT_EXISTS_CACHE_KEY, actualExists.toString());
+          }
+        });
+        return;
+      }
+
+      // Slow path: First time - check database
       const exists = await vaultService.vaultExists();
       setVaultExists(exists);
       setIsUnlocked(vaultService.getIsUnlocked());
+      // Cache the result for next time
+      await AsyncStorage.setItem(VAULT_EXISTS_CACHE_KEY, exists.toString());
     } catch (error) {
       console.error('Failed to check vault status:', error);
     } finally {
@@ -74,14 +97,14 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUnlocked) {
       refreshEntries();
-      
+
       // Register sync request handler globally when vault is unlocked
       const handleSyncRequest = async () => {
         console.log('Processing sync request from desktop...');
         try {
           const allEntries = await vaultService.getAllEntries();
           console.log(`Fetched ${allEntries.length} entries from vault`);
-          
+
           const syncEntries = allEntries.map(e => ({
             id: e.id,
             title: e.title,
@@ -95,7 +118,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             createdAt: e.createdAt,
             modifiedAt: e.modifiedAt,
           }));
-          
+
           syncService.sendSyncResponse(syncEntries);
           console.log(`Sent ${syncEntries.length} entries to desktop`);
         } catch (error) {
@@ -103,9 +126,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
           syncService.sendSyncResponse([]);
         }
       };
-      
+
       syncService.setSyncRequestHandler(handleSyncRequest);
-      
+
       return () => {
         // Clear handler when vault is locked
         syncService.setSyncRequestHandler(() => Promise.resolve());
@@ -129,6 +152,8 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     await vaultService.createVault(password);
     setVaultExists(true);
     setIsUnlocked(true);
+    // Update cache for faster subsequent app starts
+    await AsyncStorage.setItem(VAULT_EXISTS_CACHE_KEY, 'true');
   };
 
   const lock = () => {

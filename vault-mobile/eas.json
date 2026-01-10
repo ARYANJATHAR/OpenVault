@@ -10,9 +10,14 @@
     },
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "env": {
+          "EXPO_NO_HERMES_DEBUG_INFO": "1"
+        }
       }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
-

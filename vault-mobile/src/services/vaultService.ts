@@ -337,6 +337,39 @@ class VaultService {
   }
 
   /**
+   * Clear all entries (for fixing corrupted data)
+   * Keeps the vault metadata (password) intact
+   */
+  async clearAllEntries(): Promise<void> {
+    this.ensureUnlocked();
+    const db = await this.getDatabase();
+    await db.runAsync('DELETE FROM entries');
+    console.log('All entries cleared from vault');
+  }
+
+  /**
+   * Reset the entire vault (delete database and start fresh)
+   * WARNING: This will delete all data including the master password!
+   */
+  async resetVault(): Promise<void> {
+    // Close database connection
+    if (this.db) {
+      await this.db.closeAsync();
+      this.db = null;
+    }
+
+    this.lockVault();
+
+    // Delete the database file
+    const db = await SQLite.openDatabaseAsync('vault.db');
+    await db.execAsync('DROP TABLE IF EXISTS entries');
+    await db.execAsync('DROP TABLE IF EXISTS vault_meta');
+    await db.closeAsync();
+
+    console.log('Vault reset complete - all data deleted');
+  }
+
+  /**
    * Import entries from desktop sync
    * Merges with existing entries (upsert by ID)
    */
@@ -460,7 +493,7 @@ class VaultService {
         encryption_version INTEGER DEFAULT 1
       );
     `);
-    
+
     // Run migration to add encryption_version column if it doesn't exist
     await this.migrateDatabase(db);
   }
@@ -474,11 +507,11 @@ class VaultService {
       const tableInfo = await db.getAllAsync<{ name: string }>(
         "PRAGMA table_info(entries)"
       );
-      
+
       const hasEncryptionVersion = tableInfo.some(
         (col) => col.name === 'encryption_version'
       );
-      
+
       if (!hasEncryptionVersion) {
         // Add encryption_version column with default value 1 (old entries)
         await db.execAsync(`
@@ -528,37 +561,52 @@ class VaultService {
 
     const key = this.encryptionKey!;
 
+    // Debug: Log what we're trying to decrypt
+    const preview = ciphertext.length > 50 ? ciphertext.substring(0, 50) + '...' : ciphertext;
+    console.log(`Decrypting ${fieldName}: version=${encryptionVersion}, length=${ciphertext.length}, preview=${preview}`);
+
     // 1. Try Version 2 (Current Format: IV + Ciphertext)
     try {
       const v2 = decryptFromString(ciphertext, key);
       if (v2) {
+        console.log(`${fieldName}: V2 decryption successful`);
         return v2;
       }
     } catch (e) {
-      // Continue to fallback
+      console.log(`${fieldName}: V2 failed - ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
     // 2. Try Version 1 (Legacy CBC)
     try {
       const v1 = decryptFromStringV1(ciphertext, key);
       if (v1) {
+        console.log(`${fieldName}: V1 decryption successful`);
         return v1;
       }
     } catch (e) {
-      // Continue to fallback
+      console.log(`${fieldName}: V1 failed - ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
     // 3. Try Version 0 (Raw AES Fallback)
     try {
       const v0 = decryptLegacyRaw(ciphertext, key);
       if (v0) {
+        console.log(`${fieldName}: V0 decryption successful`);
         return v0;
       }
     } catch (e) {
-      // Continue to fallback
+      console.log(`${fieldName}: V0 failed - ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
-    console.warn(`Permanent decryption failure for ${fieldName} in entry`);
+    // 4. Check if the data might be plaintext (not encrypted at all)
+    // This can happen if sync received plaintext but stored it without encryption
+    if (!ciphertext.includes('=') && ciphertext.length < 100) {
+      // Might be plaintext, return as-is for debugging
+      console.warn(`${fieldName}: All decryption failed, data might be plaintext or corrupted: ${ciphertext}`);
+    } else {
+      console.warn(`Permanent decryption failure for ${fieldName} in entry`);
+    }
+
     return `[Corrupted ${fieldName}]`;
   }
 

@@ -13,8 +13,6 @@ import {
   Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
 } from '@expo-google-fonts/inter';
 
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
@@ -76,12 +74,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   // Note: Ionicons font is automatically bundled by @expo/vector-icons in SDK 52+
   // Do NOT manually load Ionicons.font here - it breaks production APK builds
+  // Only loading 3 font weights for faster startup (removed SemiBold and Bold)
   const [fontsLoaded, fontError] = useFonts({
     Inter_300Light,
     Inter_400Regular,
     Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
   });
 
   const onLayoutRootView = useCallback(async () => {
